@@ -87,11 +87,17 @@ class NotifyStatusChange implements ShouldQueue
         $settings = $tenant->settings ?? [];
         $url = $settings['webhook_callback_url'] ?? null;
 
-        if ($url) {
-            return rtrim($url, '/') . '/pos/webhooks/order-status';
+        if (!$url) {
+            Log::info("[voxpilot] status webhook skipped: no callback URL for tenant {$this->tenantId}");
+            return null;
         }
 
-        Log::info("[voxpilot] status webhook skipped: no callback URL for tenant {$this->tenantId}");
-        return null;
+        $parsed = parse_url(rtrim($url, '/') . '/pos/webhooks/order-status');
+        if (!$parsed || !in_array($parsed['scheme'] ?? '', ['http', 'https'], true)) {
+            Log::warning("[voxpilot] status webhook skipped: invalid URL scheme for tenant {$this->tenantId}");
+            return null;
+        }
+
+        return rtrim($url, '/') . '/pos/webhooks/order-status';
     }
 }
