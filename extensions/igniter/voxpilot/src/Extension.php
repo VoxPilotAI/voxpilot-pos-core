@@ -78,6 +78,8 @@ class Extension extends BaseExtension
             return;
         }
 
+        Broadcast::routes(['middleware' => ['web']]);
+
         require __DIR__.'/../routes/channels.php';
     }
 }

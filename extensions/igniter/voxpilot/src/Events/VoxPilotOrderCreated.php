@@ -8,11 +8,11 @@ use Igniter\Cart\Models\Order;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class VoxPilotOrderCreated implements ShouldBroadcast
+class VoxPilotOrderCreated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -40,31 +40,27 @@ class VoxPilotOrderCreated implements ShouldBroadcast
         $order = $this->order;
         $menus = $order->menus ?? collect();
 
+        $fulfillmentType = $order->order_type === Order::DELIVERY ? 'delivery' : 'pickup';
+
         return [
             'order_id' => $order->order_id,
             'external_order_id' => $this->metadata->external_order_id,
+            'tenant_id' => $this->tenantId,
+            'location_id' => $this->locationId,
+            'location_name' => $order->location?->location_name ?? '',
             'source' => $this->metadata->source,
             'customer' => [
                 'name' => trim($order->first_name . ' ' . $order->last_name),
                 'phone' => $order->telephone,
-                'email' => $order->email,
             ],
-            'fulfillment' => [
-                'type' => $order->order_type === Order::DELIVERY ? 'delivery' : 'pickup',
-            ],
+            'fulfillment_type' => $fulfillmentType,
             'items' => $menus->map(fn($menu) => [
                 'name' => $menu->name,
                 'quantity' => $menu->quantity,
-                'unit_price' => (float) $menu->price,
-                'subtotal' => (float) $menu->subtotal,
                 'notes' => $menu->comment ?: null,
             ])->values()->toArray(),
             'order_total' => (float) $order->order_total,
             'notes' => $order->comment,
-            'location' => [
-                'id' => $this->locationId,
-                'name' => $order->location?->location_name ?? '',
-            ],
             'status' => 'Pending',
             'created_at' => $order->created_at?->toIso8601String(),
         ];

@@ -4,7 +4,7 @@
             No tenant configured. Run: <code>php artisan voxpilot:bootstrap-tenant</code>
         </div>
     @else
-        {{-- New order toast container --}}
+        {{-- Toast container --}}
         <div id="vp-toast-container" style="position:fixed;top:20px;right:20px;z-index:9999;max-width:400px;"></div>
 
         {{-- Header --}}
@@ -20,7 +20,7 @@
                     @endforeach
                 </select>
                 <div id="vp-connection-status" class="badge bg-secondary">
-                    <i class="fa fa-circle me-1"></i>Connecting…
+                    <i class="fa fa-circle me-1"></i>Initializing…
                 </div>
                 <label class="form-check form-switch mb-0" title="Sound notification">
                     <input type="checkbox" class="form-check-input" id="vp-sound-toggle" checked>
@@ -105,18 +105,23 @@
     @endif
 </div>
 
-@if($tenant)
+@if($tenant && $reverbConfig)
+{{-- Load Pusher + Echo from CDN (Reverb uses Pusher protocol) --}}
+<script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0/dist/web/pusher.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.17.1/dist/echo.iife.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var tenantId = @json($tenantId);
     var locations = @json($locations->pluck('location_id'));
+    var reverbConfig = @json($reverbConfig);
     var statusEl = document.getElementById('vp-connection-status');
     var tbody = document.getElementById('vp-orders-body');
     var emptyState = document.getElementById('vp-empty-state');
     var locationFilter = document.getElementById('vp-location-filter');
     var soundToggle = document.getElementById('vp-sound-toggle');
 
-    // Audio context for notification sound
+    // ── Audio ──
     var audioCtx = null;
     function playNotificationSound() {
         if (!soundToggle.checked) return;
@@ -132,9 +137,10 @@ document.addEventListener('DOMContentLoaded', function() {
             osc.start();
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
             osc.stop(audioCtx.currentTime + 0.5);
-        } catch(e) {}
+        } catch(e) { console.warn('Sound failed:', e); }
     }
 
+    // ── Toast ──
     function showToast(data) {
         var container = document.getElementById('vp-toast-container');
         var toast = document.createElement('div');
@@ -148,10 +154,11 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() { toast.remove(); }, 8000);
     }
 
+    // ── Add order row ──
     function addOrderRow(data, animate) {
         if (emptyState) emptyState.style.display = 'none';
 
-        var typeIcon = data.fulfillment && data.fulfillment.type === 'delivery'
+        var typeIcon = data.fulfillment_type === 'delivery'
             ? '<span class="badge bg-info" title="Delivery"><i class="fa fa-motorcycle"></i></span>'
             : '<span class="badge bg-success" title="Pickup"><i class="fa fa-shopping-bag"></i></span>';
 
@@ -160,8 +167,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
 
         var sourceBadge = data.source === 'voice' ? 'primary' : 'secondary';
-        var locationName = data.location ? data.location.name : '—';
-        var locationId = data.location ? data.location.id : '';
+        var locationName = data.location_name || '—';
+        var locationId = data.location_id || '';
 
         var tr = document.createElement('tr');
         tr.setAttribute('data-order-id', data.order_id);
@@ -188,6 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
         applyLocationFilter();
     }
 
+    // ── Location filter ──
     function applyLocationFilter() {
         var filterVal = locationFilter.value;
         var rows = tbody.querySelectorAll('tr');
@@ -199,35 +207,100 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
     locationFilter.addEventListener('change', applyLocationFilter);
 
-    // Connect to broadcasting
-    if (typeof window.Echo === 'undefined') {
-        statusEl.className = 'badge bg-warning';
-        statusEl.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i>Echo not loaded';
+    // ── Initialize Echo with Reverb (Pusher protocol) ──
+    if (typeof window.Echo === 'undefined' && typeof Echo !== 'undefined') {
+        window.Echo = null; // will be set below
+    }
+
+    if (!reverbConfig || !reverbConfig.key) {
+        statusEl.className = 'badge bg-danger';
+        statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Reverb not configured';
+        console.error('VoxPilot: Reverb config missing. Check REVERB_APP_KEY in .env');
         return;
     }
 
-    // Subscribe to all tenant locations
+    var useTLS = reverbConfig.scheme === 'https';
+    var wsHost = reverbConfig.host || window.location.hostname;
+    var wsPort = reverbConfig.port || (useTLS ? 443 : 80);
+
+    try {
+        var echo = new Echo({
+            broadcaster: 'pusher',
+            key: reverbConfig.key,
+            wsHost: wsHost,
+            wsPort: wsPort,
+            wssPort: wsPort,
+            forceTLS: useTLS,
+            encrypted: useTLS,
+            disableStats: true,
+            enabledTransports: ['ws', 'wss'],
+            cluster: 'mt1',
+            authEndpoint: reverbConfig.authEndpoint,
+            auth: {
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                }
+            }
+        });
+    } catch(e) {
+        statusEl.className = 'badge bg-danger';
+        statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Echo init failed';
+        console.error('VoxPilot Echo init error:', e);
+        return;
+    }
+
+    // ── Connection state tracking ──
+    if (echo.connector && echo.connector.pusher) {
+        var pusher = echo.connector.pusher;
+        pusher.connection.bind('connected', function() {
+            console.log('VoxPilot: WebSocket connected');
+        });
+        pusher.connection.bind('error', function(err) {
+            statusEl.className = 'badge bg-danger';
+            statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Disconnected';
+            console.error('VoxPilot: WebSocket error:', err);
+        });
+        pusher.connection.bind('disconnected', function() {
+            statusEl.className = 'badge bg-danger';
+            statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Disconnected';
+        });
+        pusher.connection.bind('unavailable', function() {
+            statusEl.className = 'badge bg-warning';
+            statusEl.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i>Reconnecting…';
+        });
+    }
+
+    // ── Subscribe to tenant location channels ──
     var subscribed = 0;
+    var subscriptionErrors = 0;
+
     locations.forEach(function(locId) {
         var channelName = 'tenant.' + tenantId + '.location.' + locId + '.orders';
-        window.Echo.private(channelName)
+        console.log('VoxPilot: subscribing to private-' + channelName);
+
+        echo.private(channelName)
             .listen('.voxpilot.order.created', function(data) {
+                console.log('VoxPilot: order received', data);
                 playNotificationSound();
                 showToast(data);
                 addOrderRow(data, true);
             })
             .error(function(err) {
-                console.error('VoxPilot channel error:', channelName, err);
+                subscriptionErrors++;
+                console.error('VoxPilot: channel auth error for', channelName, err);
+                if (subscriptionErrors >= locations.length) {
+                    statusEl.className = 'badge bg-danger';
+                    statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Auth failed';
+                }
             });
         subscribed++;
     });
 
     if (subscribed > 0) {
         statusEl.className = 'badge bg-success';
-        statusEl.innerHTML = '<i class="fa fa-circle me-1"></i>Connected (' + subscribed + ' channel' + (subscribed > 1 ? 's' : '') + ')';
+        statusEl.innerHTML = '<i class="fa fa-circle me-1"></i>Listening (' + subscribed + ')';
     } else {
         statusEl.className = 'badge bg-warning';
         statusEl.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i>No locations';
