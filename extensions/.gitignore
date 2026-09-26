@@ -1,3 +1,7 @@
-*
-!igniter/demo/
-!.gitignore
+/*
+!/.gitignore
+!/igniter/
+
+/igniter/*
+!/igniter/demo/
+!/igniter/voxpilot/

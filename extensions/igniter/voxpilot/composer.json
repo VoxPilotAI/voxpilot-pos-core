@@ -1,0 +1,34 @@
+{
+    "name": "igniter/voxpilot",
+    "type": "tastyigniter-package",
+    "description": "VoxPilot POS integration — multi-tenancy, API token auth, and external order ingestion.",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "VoxPilot AI",
+            "email": "xnehilorx@gmail.com"
+        }
+    ],
+    "require": {
+        "tastyigniter/core": "^4.4",
+        "tastyigniter/ti-ext-cart": "^4.0",
+        "tastyigniter/ti-ext-local": "^4.0",
+        "tastyigniter/ti-ext-user": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Igniter\\VoxPilot\\": "src/"
+        }
+    },
+    "extra": {
+        "tastyigniter-extension": {
+            "code": "igniter.voxpilot",
+            "name": "VoxPilot POS Integration",
+            "icon": {
+                "class": "fa fa-phone",
+                "color": "#fff",
+                "backgroundColor": "#6366f1"
+            }
+        }
+    }
+}
