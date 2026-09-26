@@ -8,7 +8,7 @@ use Igniter\Admin\Classes\AdminController;
 use Igniter\Admin\Facades\AdminMenu;
 use Igniter\Local\Models\Location;
 use Igniter\VoxPilot\Models\TenantApiToken;
-use Igniter\VoxPilot\Models\TenantMembership;
+use Igniter\VoxPilot\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -25,7 +25,7 @@ class Integrations extends AdminController
 
     public function index(): mixed
     {
-        $tenantId = $this->getAdminTenantId();
+        $tenantId = $this->resolveTenantId();
 
         $this->vars['tokens'] = $tenantId
             ? TenantApiToken::where('tenant_id', $tenantId)
@@ -45,7 +45,7 @@ class Integrations extends AdminController
 
     public function onCreate(Request $request): RedirectResponse
     {
-        $tenantId = $this->getAdminTenantId();
+        $tenantId = $this->resolveTenantId();
         if (!$tenantId) {
             flash()->error('No tenant found. Run: php artisan voxpilot:bootstrap-tenant');
             return back();
@@ -83,7 +83,7 @@ class Integrations extends AdminController
 
     public function onRevoke(Request $request): RedirectResponse
     {
-        $tenantId = $this->getAdminTenantId();
+        $tenantId = $this->resolveTenantId();
         $tokenId = $request->input('token_id');
 
         $token = TenantApiToken::where('id', $tokenId)
@@ -98,14 +98,16 @@ class Integrations extends AdminController
         return redirect()->to(admin_url('igniter/voxpilot/integrations'));
     }
 
-    protected function getAdminTenantId(): ?int
+    protected function resolveTenantId(): ?int
     {
         $user = $this->getUser();
         if (!$user) {
             return null;
         }
 
-        $membership = TenantMembership::where('user_id', $user->user_id)->first();
-        return $membership?->tenant_id;
+        $context = app(TenantContext::class);
+        $tenant = $context->resolveForAdmin($user);
+
+        return $tenant?->id;
     }
 }

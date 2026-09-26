@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot;
 
+use Igniter\Cart\Models\Order;
+use Igniter\Local\Models\Location;
 use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\BootstrapTenant;
+use Igniter\VoxPilot\Http\Middleware\ResolveTenantForAdmin;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
 use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
+use Igniter\VoxPilot\Scopes\TenantLocationScope;
+use Igniter\VoxPilot\Scopes\TenantOrderScope;
 use Igniter\VoxPilot\Services\TenantContext;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +33,8 @@ class Extension extends BaseExtension
     #[Override]
     public function boot(): void
     {
+        $this->registerAdminMiddleware();
+        $this->registerTenantScopes();
         $this->registerApiRoutes();
         $this->registerProvisioningRoutes();
         $this->registerChannels();
@@ -67,6 +74,18 @@ class Extension extends BaseExtension
                 'group' => 'igniter::system.permissions.name',
             ],
         ];
+    }
+
+    protected function registerAdminMiddleware(): void
+    {
+        $router = $this->app['router'];
+        $router->pushMiddlewareToGroup('igniter', ResolveTenantForAdmin::class);
+    }
+
+    protected function registerTenantScopes(): void
+    {
+        Order::addGlobalScope(new TenantOrderScope());
+        Location::addGlobalScope(new TenantLocationScope());
     }
 
     protected function registerApiRoutes(): void

@@ -6,8 +6,8 @@ namespace Igniter\VoxPilot\Http\Controllers;
 
 use Igniter\Admin\Classes\AdminController;
 use Igniter\Local\Models\Location;
-use Igniter\VoxPilot\Models\TenantMembership;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
+use Igniter\VoxPilot\Services\TenantContext;
 
 class IncomingOrders extends AdminController
 {
@@ -18,9 +18,10 @@ class IncomingOrders extends AdminController
         $this->pageTitle = 'Incoming Orders';
 
         $user = $this->getUser();
-        $membership = TenantMembership::where('user_id', $user->user_id)->first();
+        $context = app(TenantContext::class);
+        $tenant = $context->resolveForAdmin($user);
 
-        if (!$membership) {
+        if (!$tenant) {
             $this->vars['tenant'] = null;
             $this->vars['locations'] = collect();
             $this->vars['recentOrders'] = collect();
@@ -28,7 +29,7 @@ class IncomingOrders extends AdminController
             return;
         }
 
-        $tenantId = $membership->tenant_id;
+        $tenantId = $tenant->id;
         $locations = Location::where('tenant_id', $tenantId)->get();
 
         $recentOrders = VoxPilotOrderMetadata::with(['order', 'order.menus', 'order.location'])
@@ -37,7 +38,7 @@ class IncomingOrders extends AdminController
             ->limit(50)
             ->get();
 
-        $this->vars['tenant'] = $membership->tenant;
+        $this->vars['tenant'] = $tenant;
         $this->vars['tenantId'] = $tenantId;
         $this->vars['locations'] = $locations;
         $this->vars['recentOrders'] = $recentOrders;
