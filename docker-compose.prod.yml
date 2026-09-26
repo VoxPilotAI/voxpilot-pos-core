@@ -1,0 +1,101 @@
+# VoxPilot POS — Coolify production compose.
+# Coolify deploys this file. Domain: pos.voxpilothq.io
+# Coolify handles TLS termination and reverse proxy.
+#
+# WebSocket proxy: Coolify must route /app/* and /apps/* to port 6001.
+# See DEPLOYMENT_COOLIFY.md for proxy configuration.
+
+services:
+  pos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voxpilot-pos
+    restart: unless-stopped
+    depends_on:
+      pos-db:
+        condition: service_healthy
+      pos-redis:
+        condition: service_healthy
+    environment:
+      APP_NAME: "VoxPilot POS"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: https://pos.voxpilothq.io
+      APP_KEY: ${APP_KEY}
+      IGNITER_LOCATION_MODE: ${IGNITER_LOCATION_MODE:-single}
+      DB_CONNECTION: mysql
+      DB_HOST: pos-db
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-voxpilot_pos}
+      DB_USERNAME: ${DB_USERNAME:-voxpilot_pos}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PREFIX: ti_
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      REDIS_HOST: pos-redis
+      REDIS_PORT: "6379"
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID}
+      REVERB_APP_KEY: ${REVERB_APP_KEY}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET}
+      REVERB_HOST: pos.voxpilothq.io
+      REVERB_PORT: "443"
+      REVERB_SCHEME: https
+      REVERB_SERVER_HOST: "0.0.0.0"
+      REVERB_SERVER_PORT: "6001"
+      REVERB_SERVER_SCHEME: http
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@voxpilothq.io}
+      MAIL_FROM_NAME: "VoxPilot POS"
+    volumes:
+      - pos_storage:/var/www/html/storage
+      - pos_bootstrap_cache:/var/www/html/bootstrap/cache
+    ports:
+      - "80:80"
+      - "6001:6001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  pos-db:
+    image: mysql:8.4
+    container_name: voxpilot-pos-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-voxpilot_pos}
+      MYSQL_USER: ${DB_USERNAME:-voxpilot_pos}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-${DB_PASSWORD}}
+    volumes:
+      - pos_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-${DB_PASSWORD}}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pos-redis:
+    image: redis:7-alpine
+    container_name: voxpilot-pos-redis
+    restart: unless-stopped
+    volumes:
+      - pos_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  pos_db_data:
+  pos_redis_data:
+  pos_storage:
+  pos_bootstrap_cache:

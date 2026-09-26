@@ -2,8 +2,11 @@
 node_modules
 vendor
 storage/*.key
+storage/logs/*
 .env
-docker/Dockerfile
+.env.testing
 tests
-docker-compose*
 .git
+.github
+STAGE_2_*.md
+DEPLOYMENT_COOLIFY.md

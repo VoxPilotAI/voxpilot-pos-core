@@ -227,8 +227,8 @@ Click "Revoke" in the admin UI. Revoked tokens return 401 immediately.
 | Order not visible in admin | Check correct location is selected in admin location filter |
 | "No tenant configured" in admin | Run `php artisan voxpilot:bootstrap-tenant` |
 | Migration fails | Run `composer dump-autoload` first, then `php artisan migrate` |
-| WebSocket not connecting | Check `BROADCAST_CONNECTION=reverb` and Reverb env vars in `.env` |
-| Orders not appearing realtime | Ensure queue worker running: `php artisan queue:work` |
+| WebSocket not connecting | See Realtime Troubleshooting below |
+| Orders not appearing realtime | See Realtime Troubleshooting below |
 | Channel auth 403 | User must be tenant member AND location must belong to tenant |
 
 ---
@@ -237,127 +237,223 @@ Click "Revoke" in the admin UI. Revoked tokens return 401 immediately.
 
 ### Overview
 
-When `POST /api/voxpilot/orders` creates an order, a `VoxPilotOrderCreated` event is broadcast on a private channel. Admin users subscribed via the **Incoming Orders** screen see new orders instantly.
+When `POST /api/voxpilot/orders` creates a new order, a `VoxPilotOrderCreated` event is broadcast synchronously (`ShouldBroadcastNow`) on a private channel. Admin users on the **Incoming Orders** screen see new orders instantly. No queue worker is required.
+
+Duplicate orders (same `external_order_id`) do NOT trigger a broadcast.
 
 **Channel:** `private-tenant.{tenantId}.location.{locationId}.orders`
 **Event:** `.voxpilot.order.created`
 
-### Setup
+### Environment Variables
 
-#### 1. Environment Variables
+There are three groups of Reverb env vars. Server-side and client-side are intentionally decoupled.
 
-Add to `.env`:
+#### Shared credentials (same value both sides)
+
+| Variable | Description | Local default | Production |
+|----------|-------------|---------------|------------|
+| `REVERB_APP_ID` | Reverb application ID | `891234` | **Generate unique value** |
+| `REVERB_APP_KEY` | Reverb public key (exposed to browser) | `voxpilot-reverb-key` | **Generate unique value** |
+| `REVERB_APP_SECRET` | Reverb secret (server-side only) | `voxpilot-reverb-secret` | **Generate unique value** |
+
+#### Server-side (Laravel broadcaster → Reverb, internal)
+
+| Variable | Description | Local default |
+|----------|-------------|---------------|
+| `REVERB_SERVER_HOST` | Reverb bind address | `0.0.0.0` |
+| `REVERB_SERVER_PORT` | Reverb bind port | `6001` |
+| `REVERB_SERVER_SCHEME` | `http` or `https` | `http` |
+
+#### Client-side (browser Echo → Caddy/proxy → Reverb)
+
+| Variable | Description | Local | Production |
+|----------|-------------|-------|------------|
+| `REVERB_HOST` | WebSocket hostname for browser | `pos.voxpilot.test` | `pos.voxpilothq.io` |
+| `REVERB_PORT` | WebSocket port for browser | `443` | `443` |
+| `REVERB_SCHEME` | `http` or `https` | `https` | `https` |
+
+#### Full `.env` example (local Docker)
 
 ```env
 BROADCAST_CONNECTION=reverb
-QUEUE_CONNECTION=database
 
-REVERB_APP_ID=123456
-REVERB_APP_KEY=your-reverb-key
-REVERB_APP_SECRET=your-reverb-secret
-REVERB_HOST=localhost
-REVERB_PORT=8080
-REVERB_SCHEME=http
+REVERB_APP_ID=891234
+REVERB_APP_KEY=voxpilot-reverb-key
+REVERB_APP_SECRET=voxpilot-reverb-secret
 
 REVERB_SERVER_HOST=0.0.0.0
-REVERB_SERVER_PORT=8080
+REVERB_SERVER_PORT=6001
+REVERB_SERVER_SCHEME=http
+
+REVERB_HOST=pos.voxpilot.test
+REVERB_PORT=443
+REVERB_SCHEME=https
 ```
 
-For Docker, use `REVERB_HOST=pos` (the container hostname) if accessing from within the Docker network, or `localhost` / `pos.voxpilot.test` if accessing from the host browser.
+#### Production / Coolify
 
-#### 2. Enable Broadcast Extension
+Set these as environment variables in Coolify (never commit production secrets):
 
-Configure via TastyIgniter admin: **System > Settings > Broadcast Settings**
+```env
+BROADCAST_CONNECTION=reverb
 
-Set provider to **Reverb** and fill in the same app ID, key, and secret from your `.env`.
+REVERB_APP_ID=<generate-unique>
+REVERB_APP_KEY=<generate-unique>
+REVERB_APP_SECRET=<generate-unique>
 
-Alternatively, seed the settings:
+REVERB_SERVER_HOST=127.0.0.1
+REVERB_SERVER_PORT=6001
+REVERB_SERVER_SCHEME=http
 
-```bash
-docker exec -it voxpilot-ai-pos php artisan tinker --execute="
-\DB::table('settings')->updateOrInsert(
-    ['sort' => 'igniter_broadcast_settings'],
-    ['value' => json_encode([
-        'provider' => 'reverb',
-        'reverb_app_id' => env('REVERB_APP_ID', '123456'),
-        'reverb_key' => env('REVERB_APP_KEY', 'your-reverb-key'),
-        'reverb_secret' => env('REVERB_APP_SECRET', 'your-reverb-secret'),
-        'reverb_host' => env('REVERB_HOST', 'localhost'),
-        'reverb_port' => env('REVERB_PORT', 8080),
-        'reverb_scheme' => env('REVERB_SCHEME', 'http'),
-    ])]
-);
-echo 'OK';
-"
+REVERB_HOST=pos.voxpilothq.io
+REVERB_PORT=443
+REVERB_SCHEME=https
 ```
 
-#### 3. Create Queue Table (if using database queue)
-
+Generate credentials:
 ```bash
-docker exec -it voxpilot-ai-pos php artisan queue:table
-docker exec -it voxpilot-ai-pos php artisan migrate
+php -r "echo bin2hex(random_bytes(16));"  # for APP_ID
+php -r "echo bin2hex(random_bytes(32));"  # for APP_KEY
+php -r "echo bin2hex(random_bytes(32));"  # for APP_SECRET
 ```
 
-#### 4. Start Services
+### Reverb Process
 
-**Reverb WebSocket server:**
+Reverb runs as a long-lived PHP process alongside Apache.
+
+**Local Docker:** Reverb starts automatically via `entrypoint.sh` when `BROADCAST_CONNECTION=reverb`. No manual intervention needed.
+
+**Manual start:**
 ```bash
-docker exec -it voxpilot-ai-pos php artisan reverb:start --host=0.0.0.0 --port=8080
+docker exec -it voxpilot-ai-pos php artisan reverb:start --host=0.0.0.0 --port=6001
 ```
 
-**Queue worker:**
-```bash
-docker exec -it voxpilot-ai-pos php artisan queue:work --tries=3
+**Coolify/production:** Run Reverb as a separate supervised process. Options:
+
+1. **Supervisor** (recommended for Coolify):
+```ini
+[program:reverb]
+command=php /var/www/html/artisan reverb:start --host=127.0.0.1 --port=6001
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/reverb.err.log
+stdout_logfile=/var/log/reverb.out.log
 ```
 
-### Testing with Two Browser Windows
+2. **Separate Docker Compose service** (alternative):
+```yaml
+pos-reverb:
+  image: voxpilot-ai-pos:dev
+  container_name: voxpilot-ai-pos-reverb
+  command: php artisan reverb:start --host=0.0.0.0 --port=6001
+  restart: unless-stopped
+  depends_on: [pos-db]
+  environment: { ... same DB + REVERB env vars as pos service ... }
+  volumes:
+    - ./voxpilot-pos-core:/var/www/html
+  expose: ["6001"]
+  networks: [voxpilot]
+```
 
-1. **Window A:** Open `https://pos.voxpilot.test/admin/igniter/voxpilot/incomingorders`
-   - Should show "Connected (N channels)" badge in green
-   - Enable sound toggle if desired
+### WebSocket Proxy
 
-2. **Window B:** Open a terminal and send a test order via curl:
+Browser connects to the same domain/port as the POS admin (`wss://pos.voxpilot.test/app/{key}`). The reverse proxy routes WebSocket paths to Reverb.
+
+**Caddy (local, already configured):**
+```
+pos.voxpilot.test {
+    tls internal
+    @reverb path /app/* /apps/*
+    reverse_proxy @reverb pos:6001
+    reverse_proxy pos:80 {
+        header_up X-Forwarded-Proto https
+    }
+}
+```
+
+**Coolify/Nginx equivalent:**
+```nginx
+location ~ ^/(app|apps)/ {
+    proxy_pass http://127.0.0.1:6001;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+}
+```
+
+Key points:
+- `/app/*` and `/apps/*` are Pusher-protocol paths used by Reverb
+- Must proxy to Reverb port (6001), not Apache (80)
+- WebSocket requires `Upgrade` and `Connection` headers
+- Must use HTTP/1.1 (HTTP/2 does not support WebSocket upgrade)
+
+### Browser Test Checklist
+
+1. Log in to POS admin at `https://pos.voxpilot.test/admin`
+2. Go to **Tools > Incoming Orders**
+3. Verify green **"Listening (N)"** badge
+4. Open browser console — should show:
+   - `VoxPilot: subscribing to private-tenant.X.location.Y.orders`
+   - `VoxPilot: WebSocket connected`
+5. Send test order via curl (see below)
+6. Verify order appears instantly with green highlight + toast notification
+7. Verify console shows `VoxPilot: order received {...}`
+
+### curl Test
 
 ```bash
-curl -X POST https://pos.voxpilot.test/api/voxpilot/orders \
+curl -sk -X POST https://pos.voxpilot.test/api/voxpilot/orders \
   -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -k \
   -d '{
-    "external_order_id": "vp_realtime_test_001",
-    "call_sid": "CA_live_test",
+    "external_order_id": "vp_test_'$(date +%s)'",
+    "call_sid": "CA_test",
     "source": "voice",
-    "customer": {
-      "name": "Realtime Test",
-      "phone": "+34600000000"
-    },
-    "fulfillment": { "type": "pickup", "requested_time": "ASAP" },
+    "customer": {"name": "Test Customer", "phone": "+34600000000"},
+    "fulfillment": {"type": "pickup", "requested_time": "ASAP"},
     "items": [
-      { "name": "Pepperoni Pizza", "quantity": 2, "unit_price": 14.50 },
-      { "name": "Tiramisu", "quantity": 1, "unit_price": 6.00 }
+      {"name": "Pepperoni Pizza", "quantity": 2, "unit_price": 14.50},
+      {"name": "Tiramisu", "quantity": 1, "unit_price": 6.00}
     ],
     "notes": "Realtime notification test"
   }'
 ```
 
-3. **Window A** should instantly show the new order with a green highlight and toast notification (+ sound if enabled).
-
 ### Channel Authorization
 
 Channel `private-tenant.{tenantId}.location.{locationId}.orders` requires:
-- User authenticated as admin (`igniter-admin` guard)
+- User authenticated as TI admin (middleware: `web` + `igniter`, guard: `igniter-admin`)
 - User has `TenantMembership` for the given tenant
 - Location belongs to the tenant (or user is `super_user`)
+- Channel auth does NOT trust client-sent `tenant_id` — verified server-side
+
+### Realtime Troubleshooting
+
+| Problem | Diagnosis | Fix |
+|---------|-----------|-----|
+| WebSocket connects but no events | Reverb running? `ps aux \| grep reverb` | Start Reverb: `php artisan reverb:start --host=0.0.0.0 --port=6001` |
+| `/broadcasting/auth` returns 403 | User not logged in, or not a tenant member | Log in to admin. Run `voxpilot:bootstrap-tenant` to assign membership |
+| `/broadcasting/auth` returns 404 | Broadcast routes not registered | Verify `BROADCAST_CONNECTION=reverb` in `.env`. Run `php artisan config:clear` |
+| Mixed content error in browser | Client-side scheme mismatch | Set `REVERB_SCHEME=https` and `REVERB_PORT=443` |
+| Reverb port unreachable | Port not exposed or proxy misconfigured | Check `expose: ["6001"]` in compose. Check Caddy `@reverb` path matcher |
+| Wrong host/port/scheme | Server-side vs client-side vars swapped | Server: `REVERB_SERVER_*`. Client: `REVERB_HOST/PORT/SCHEME` |
+| Duplicate `external_order_id` does not broadcast | Expected behavior | Idempotent duplicates return 200 with `is_duplicate: true` and do not fire events |
+| `BroadcastException: cURL error 7` | Server-side broadcaster using client-facing host | Check `REVERB_SERVER_HOST` points to `127.0.0.1` or `0.0.0.0`, not external domain |
 
 ### Incoming Orders Admin UI
 
 Navigate to **Tools > Incoming Orders** in the POS admin.
 
 Features:
-- Real-time order display via WebSocket
+- Real-time order display via WebSocket (Pusher + Echo CDN, standalone — no TI broadcast extension dependency)
 - Location filter dropdown
 - Sound notification toggle
 - Toast alert for each new order
 - Link to full order detail page
 - Green highlight animation on new orders
+- Connection status badge (Listening / Disconnected / Reconnecting / Auth failed)
