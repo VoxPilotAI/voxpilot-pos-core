@@ -7,6 +7,7 @@ namespace Igniter\VoxPilot;
 use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\BootstrapTenant;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
+use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
 use Igniter\VoxPilot\Services\TenantContext;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,8 @@ class Extension extends BaseExtension
     {
         $this->app->singleton(TenantContext::class);
 
+        $this->mergeConfigFrom(__DIR__.'/../config/voxpilot.php', 'voxpilot');
+
         $this->registerConsoleCommand('voxpilot.bootstrap-tenant', BootstrapTenant::class);
     }
 
@@ -26,6 +29,7 @@ class Extension extends BaseExtension
     public function boot(): void
     {
         $this->registerApiRoutes();
+        $this->registerProvisioningRoutes();
         $this->registerChannels();
     }
 
@@ -72,13 +76,20 @@ class Extension extends BaseExtension
             ->group(__DIR__.'/../routes/api.php');
     }
 
+    protected function registerProvisioningRoutes(): void
+    {
+        Route::prefix('api/voxpilot/provision')
+            ->middleware(['api', VerifyProvisioningSecret::class])
+            ->group(__DIR__.'/../routes/provisioning.php');
+    }
+
     protected function registerChannels(): void
     {
         if (!Broadcast::getFacadeRoot()) {
             return;
         }
 
-        Broadcast::routes(['middleware' => ['web']]);
+        Broadcast::routes(['middleware' => ['web', 'igniter']]);
 
         require __DIR__.'/../routes/channels.php';
     }
