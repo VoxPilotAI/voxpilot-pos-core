@@ -73,15 +73,21 @@ class TenantProvisioningService
             $candidateSlug = $slug . '-' . $counter;
         }
 
+        $settings = [
+            'provisioned_by' => 'voxpilot',
+            'provisioned_at' => now()->toISOString(),
+        ];
+
+        if (!empty($payload['webhook_callback_url'])) {
+            $settings['webhook_callback_url'] = $payload['webhook_callback_url'];
+        }
+
         return Tenant::create([
             'name' => $name,
             'slug' => $candidateSlug,
             'external_tenant_id' => $externalTenantId,
             'status' => 'active',
-            'settings' => [
-                'provisioned_by' => 'voxpilot',
-                'provisioned_at' => now()->toISOString(),
-            ],
+            'settings' => $settings,
         ]);
     }
 

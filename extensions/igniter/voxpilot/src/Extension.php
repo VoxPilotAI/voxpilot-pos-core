@@ -12,10 +12,13 @@ use Igniter\VoxPilot\Http\Middleware\ResolveTenantForAdmin;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
 use Igniter\VoxPilot\Http\Middleware\VerifyHmacSignature;
 use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
+use Igniter\VoxPilot\Jobs\NotifyStatusChange;
+use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Scopes\TenantLocationScope;
 use Igniter\VoxPilot\Scopes\TenantOrderScope;
 use Igniter\VoxPilot\Services\TenantContext;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Override;
 
@@ -39,6 +42,7 @@ class Extension extends BaseExtension
         $this->registerApiRoutes();
         $this->registerProvisioningRoutes();
         $this->registerChannels();
+        $this->registerOrderStatusListener();
     }
 
     #[Override]
@@ -112,5 +116,23 @@ class Extension extends BaseExtension
         Broadcast::routes(['middleware' => ['web', 'igniter']]);
 
         require __DIR__.'/../routes/channels.php';
+    }
+
+    protected function registerOrderStatusListener(): void
+    {
+        Event::listen('igniter.cart.orderStatusAdded', function (Order $order, $statusHistory): void {
+            $metadata = VoxPilotOrderMetadata::where('order_id', $order->order_id)->first();
+            if (!$metadata) {
+                return;
+            }
+
+            NotifyStatusChange::dispatch(
+                $order->order_id,
+                $metadata->tenant_id,
+                $metadata->external_order_id,
+                $statusHistory->status?->status_name ?? $statusHistory->status_for ?? 'unknown',
+                $statusHistory->comment ?? null,
+            );
+        });
     }
 }
