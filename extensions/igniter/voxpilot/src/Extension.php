@@ -8,6 +8,7 @@ use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\BootstrapTenant;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
 use Igniter\VoxPilot\Services\TenantContext;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Override;
 
@@ -25,6 +26,7 @@ class Extension extends BaseExtension
     public function boot(): void
     {
         $this->registerApiRoutes();
+        $this->registerChannels();
     }
 
     #[Override]
@@ -37,7 +39,14 @@ class Extension extends BaseExtension
                         'priority' => 50,
                         'class' => 'voxpilot-integrations',
                         'href' => admin_url('igniter/voxpilot/integrations'),
-                        'title' => 'VoxPilot',
+                        'title' => 'VoxPilot Tokens',
+                        'permission' => 'Igniter.VoxPilot.Manage',
+                    ],
+                    'voxpilot-incoming' => [
+                        'priority' => 49,
+                        'class' => 'voxpilot-incoming-orders',
+                        'href' => admin_url('igniter/voxpilot/incoming_orders'),
+                        'title' => 'Incoming Orders',
                         'permission' => 'Igniter.VoxPilot.Manage',
                     ],
                 ],
@@ -61,5 +70,14 @@ class Extension extends BaseExtension
         Route::prefix('api/voxpilot')
             ->middleware(['api', ResolveTenantFromToken::class])
             ->group(__DIR__.'/../routes/api.php');
+    }
+
+    protected function registerChannels(): void
+    {
+        if (!Broadcast::getFacadeRoot()) {
+            return;
+        }
+
+        require __DIR__.'/../routes/channels.php';
     }
 }

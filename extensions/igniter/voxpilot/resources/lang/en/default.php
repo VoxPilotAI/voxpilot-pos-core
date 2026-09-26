@@ -13,4 +13,6 @@ return [
     'text_revoked' => 'Revoked',
     'alert_token_created' => 'API token created. Copy it now — it will not be shown again.',
     'alert_no_tenant' => 'No tenant configured. Run: php artisan voxpilot:bootstrap-tenant',
+    'text_incoming_orders' => 'Incoming Orders',
+    'text_no_orders' => 'No VoxPilot orders yet. Waiting for incoming calls…',
 ];

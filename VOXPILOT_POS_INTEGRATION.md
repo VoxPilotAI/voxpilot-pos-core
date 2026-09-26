@@ -227,3 +227,137 @@ Click "Revoke" in the admin UI. Revoked tokens return 401 immediately.
 | Order not visible in admin | Check correct location is selected in admin location filter |
 | "No tenant configured" in admin | Run `php artisan voxpilot:bootstrap-tenant` |
 | Migration fails | Run `composer dump-autoload` first, then `php artisan migrate` |
+| WebSocket not connecting | Check `BROADCAST_CONNECTION=reverb` and Reverb env vars in `.env` |
+| Orders not appearing realtime | Ensure queue worker running: `php artisan queue:work` |
+| Channel auth 403 | User must be tenant member AND location must belong to tenant |
+
+---
+
+## Realtime Order Notifications
+
+### Overview
+
+When `POST /api/voxpilot/orders` creates an order, a `VoxPilotOrderCreated` event is broadcast on a private channel. Admin users subscribed via the **Incoming Orders** screen see new orders instantly.
+
+**Channel:** `private-tenant.{tenantId}.location.{locationId}.orders`
+**Event:** `.voxpilot.order.created`
+
+### Setup
+
+#### 1. Environment Variables
+
+Add to `.env`:
+
+```env
+BROADCAST_CONNECTION=reverb
+QUEUE_CONNECTION=database
+
+REVERB_APP_ID=123456
+REVERB_APP_KEY=your-reverb-key
+REVERB_APP_SECRET=your-reverb-secret
+REVERB_HOST=localhost
+REVERB_PORT=8080
+REVERB_SCHEME=http
+
+REVERB_SERVER_HOST=0.0.0.0
+REVERB_SERVER_PORT=8080
+```
+
+For Docker, use `REVERB_HOST=pos` (the container hostname) if accessing from within the Docker network, or `localhost` / `pos.voxpilot.test` if accessing from the host browser.
+
+#### 2. Enable Broadcast Extension
+
+Configure via TastyIgniter admin: **System > Settings > Broadcast Settings**
+
+Set provider to **Reverb** and fill in the same app ID, key, and secret from your `.env`.
+
+Alternatively, seed the settings:
+
+```bash
+docker exec -it voxpilot-ai-pos php artisan tinker --execute="
+\DB::table('settings')->updateOrInsert(
+    ['sort' => 'igniter_broadcast_settings'],
+    ['value' => json_encode([
+        'provider' => 'reverb',
+        'reverb_app_id' => env('REVERB_APP_ID', '123456'),
+        'reverb_key' => env('REVERB_APP_KEY', 'your-reverb-key'),
+        'reverb_secret' => env('REVERB_APP_SECRET', 'your-reverb-secret'),
+        'reverb_host' => env('REVERB_HOST', 'localhost'),
+        'reverb_port' => env('REVERB_PORT', 8080),
+        'reverb_scheme' => env('REVERB_SCHEME', 'http'),
+    ])]
+);
+echo 'OK';
+"
+```
+
+#### 3. Create Queue Table (if using database queue)
+
+```bash
+docker exec -it voxpilot-ai-pos php artisan queue:table
+docker exec -it voxpilot-ai-pos php artisan migrate
+```
+
+#### 4. Start Services
+
+**Reverb WebSocket server:**
+```bash
+docker exec -it voxpilot-ai-pos php artisan reverb:start --host=0.0.0.0 --port=8080
+```
+
+**Queue worker:**
+```bash
+docker exec -it voxpilot-ai-pos php artisan queue:work --tries=3
+```
+
+### Testing with Two Browser Windows
+
+1. **Window A:** Open `https://pos.voxpilot.test/admin/igniter/voxpilot/incomingorders`
+   - Should show "Connected (N channels)" badge in green
+   - Enable sound toggle if desired
+
+2. **Window B:** Open a terminal and send a test order via curl:
+
+```bash
+curl -X POST https://pos.voxpilot.test/api/voxpilot/orders \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -k \
+  -d '{
+    "external_order_id": "vp_realtime_test_001",
+    "call_sid": "CA_live_test",
+    "source": "voice",
+    "customer": {
+      "name": "Realtime Test",
+      "phone": "+34600000000"
+    },
+    "fulfillment": { "type": "pickup", "requested_time": "ASAP" },
+    "items": [
+      { "name": "Pepperoni Pizza", "quantity": 2, "unit_price": 14.50 },
+      { "name": "Tiramisu", "quantity": 1, "unit_price": 6.00 }
+    ],
+    "notes": "Realtime notification test"
+  }'
+```
+
+3. **Window A** should instantly show the new order with a green highlight and toast notification (+ sound if enabled).
+
+### Channel Authorization
+
+Channel `private-tenant.{tenantId}.location.{locationId}.orders` requires:
+- User authenticated as admin (`igniter-admin` guard)
+- User has `TenantMembership` for the given tenant
+- Location belongs to the tenant (or user is `super_user`)
+
+### Incoming Orders Admin UI
+
+Navigate to **Tools > Incoming Orders** in the POS admin.
+
+Features:
+- Real-time order display via WebSocket
+- Location filter dropdown
+- Sound notification toggle
+- Toast alert for each new order
+- Link to full order detail page
+- Green highlight animation on new orders

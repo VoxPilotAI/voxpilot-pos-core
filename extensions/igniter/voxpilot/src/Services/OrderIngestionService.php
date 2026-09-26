@@ -11,6 +11,7 @@ use Igniter\Local\Models\Location;
 use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantApiToken;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
+use Igniter\VoxPilot\Events\VoxPilotOrderCreated;
 use Illuminate\Support\Facades\DB;
 
 class OrderIngestionService
@@ -26,14 +27,23 @@ class OrderIngestionService
 
         $locationId = $this->resolveLocationId($payload, $tenant, $token);
 
-        return DB::transaction(function () use ($payload, $tenant, $locationId, $idempotencyKey) {
+        $result = DB::transaction(function () use ($payload, $tenant, $locationId, $idempotencyKey) {
             $order = $this->createOrder($payload, $tenant, $locationId);
             $this->createOrderMenus($order, $payload['items'] ?? []);
             $this->createOrderTotals($order);
             $metadata = $this->createMetadata($order, $tenant, $locationId, $payload, $idempotencyKey);
 
-            return ['order' => $order->fresh(), 'metadata' => $metadata, 'created' => true];
+            return ['order' => $order->fresh(['menus', 'location']), 'metadata' => $metadata, 'created' => true];
         });
+
+        VoxPilotOrderCreated::dispatch(
+            $result['order'],
+            $result['metadata'],
+            $tenant->id,
+            $locationId,
+        );
+
+        return $result;
     }
 
     protected function findExistingOrder(int $tenantId, string $externalOrderId): ?array
