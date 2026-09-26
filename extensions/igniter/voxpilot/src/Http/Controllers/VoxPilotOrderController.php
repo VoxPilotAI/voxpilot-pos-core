@@ -38,20 +38,28 @@ class VoxPilotOrderController extends Controller
         $order = $result['order'];
         $statusCode = $result['created'] ? 201 : 200;
 
-        return response()->json([
-            'data' => [
-                'order_id' => $order->order_id,
-                'external_order_id' => $result['metadata']->external_order_id,
-                'status' => $order->status?->status_name ?? 'pending',
-                'location' => [
-                    'id' => $order->location_id,
-                    'name' => $order->location?->location_name ?? '',
-                ],
-                'items_count' => $order->total_items,
-                'order_total' => $order->order_total,
-                'created_at' => $order->created_at?->toIso8601String(),
-                'is_duplicate' => !$result['created'],
+        $data = [
+            'order_id' => $order->order_id,
+            'external_order_id' => $result['metadata']->external_order_id,
+            'status' => $order->status?->status_name ?? 'pending',
+            'location' => [
+                'id' => $order->location_id,
+                'name' => $order->location?->location_name ?? '',
             ],
-        ], $statusCode);
+            'items_count' => $order->total_items,
+            'order_total' => $order->order_total,
+            'created_at' => $order->created_at?->toIso8601String(),
+            'is_duplicate' => !$result['created'],
+        ];
+
+        if ($result['created']) {
+            $data['price_mismatch'] = $result['price_mismatch'] ?? false;
+            $data['unmapped'] = array_map(
+                fn($i) => ['name' => $i['name'] ?? '?', 'quantity' => $i['quantity'] ?? 1],
+                $result['unmapped'] ?? []
+            );
+        }
+
+        return response()->json(['data' => $data], $statusCode);
     }
 }

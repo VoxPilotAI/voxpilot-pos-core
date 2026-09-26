@@ -10,6 +10,7 @@ use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\BootstrapTenant;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantForAdmin;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
+use Igniter\VoxPilot\Http\Middleware\VerifyHmacSignature;
 use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
 use Igniter\VoxPilot\Scopes\TenantLocationScope;
 use Igniter\VoxPilot\Scopes\TenantOrderScope;
@@ -91,7 +92,7 @@ class Extension extends BaseExtension
     protected function registerApiRoutes(): void
     {
         Route::prefix('api/voxpilot')
-            ->middleware(['api', ResolveTenantFromToken::class])
+            ->middleware(['api', VerifyHmacSignature::class, ResolveTenantFromToken::class])
             ->group(__DIR__.'/../routes/api.php');
     }
 
