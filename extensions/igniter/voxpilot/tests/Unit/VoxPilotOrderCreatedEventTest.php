@@ -27,7 +27,7 @@ class VoxPilotOrderCreatedEventTest extends TestCase
 
         $this->assertCount(1, $channels);
         $this->assertInstanceOf(PrivateChannel::class, $channels[0]);
-        $this->assertEquals('tenant.5.location.10.orders', $channels[0]->name);
+        $this->assertEquals('private-tenant.5.location.10.orders', $channels[0]->name);
     }
 
     public function test_broadcast_as_returns_custom_name(): void

@@ -8,10 +8,13 @@ use Igniter\Local\Models\Location;
 use Igniter\User\Models\User;
 use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantMembership;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class ChannelAuthorizationTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected Tenant $tenant;
 
     protected function setUp(): void
@@ -20,7 +23,7 @@ class ChannelAuthorizationTest extends TestCase
 
         $this->tenant = Tenant::create([
             'name' => 'Auth Test Tenant',
-            'slug' => 'auth-test-tenant',
+            'slug' => 'auth-test-tenant-' . uniqid(),
             'status' => 'active',
         ]);
     }
@@ -35,6 +38,7 @@ class ChannelAuthorizationTest extends TestCase
         $this->actingAs($user, 'igniter-admin');
 
         $response = $this->postJson('/broadcasting/auth', [
+            'socket_id' => '1234.5678',
             'channel_name' => 'private-tenant.' . $this->tenant->id . '.location.1.orders',
         ]);
 
@@ -65,6 +69,7 @@ class ChannelAuthorizationTest extends TestCase
         $this->actingAs($user, 'igniter-admin');
 
         $response = $this->postJson('/broadcasting/auth', [
+            'socket_id' => '1234.5678',
             'channel_name' => 'private-tenant.' . $this->tenant->id . '.location.' . $location->location_id . '.orders',
         ]);
 
@@ -87,6 +92,7 @@ class ChannelAuthorizationTest extends TestCase
         $this->actingAs($user, 'igniter-admin');
 
         $response = $this->postJson('/broadcasting/auth', [
+            'socket_id' => '1234.5678',
             'channel_name' => 'private-tenant.' . $this->tenant->id . '.location.99999.orders',
         ]);
 

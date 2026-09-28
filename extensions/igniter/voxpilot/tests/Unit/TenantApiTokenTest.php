@@ -6,15 +6,18 @@ namespace Igniter\VoxPilot\Tests\Unit;
 
 use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantApiToken;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class TenantApiTokenTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_generate_token_creates_record_and_returns_plain_text(): void
     {
         $tenant = Tenant::create([
             'name' => 'Test Tenant',
-            'slug' => 'test-tenant',
+            'slug' => 'test-tenant-' . uniqid(),
             'status' => 'active',
         ]);
 
@@ -25,8 +28,8 @@ class TenantApiTokenTest extends TestCase
 
         $this->assertNotNull($result['token']);
         $this->assertNotNull($result['plain_text']);
-        $this->assertStringContains('vp_pos_', $result['plain_text']);
-        $this->assertStringContains('|', $result['plain_text']);
+        $this->assertStringContainsString('vp_pos_', $result['plain_text']);
+        $this->assertStringContainsString('|', $result['plain_text']);
         $this->assertEquals('Test Token', $result['token']->name);
         $this->assertEquals($tenant->id, $result['token']->tenant_id);
     }
@@ -35,7 +38,7 @@ class TenantApiTokenTest extends TestCase
     {
         $tenant = Tenant::create([
             'name' => 'Test Tenant',
-            'slug' => 'test-tenant-2',
+            'slug' => 'test-tenant-' . uniqid(),
             'status' => 'active',
         ]);
 
@@ -64,7 +67,7 @@ class TenantApiTokenTest extends TestCase
     {
         $tenant = Tenant::create([
             'name' => 'Test Tenant',
-            'slug' => 'test-tenant-3',
+            'slug' => 'test-tenant-' . uniqid(),
             'status' => 'active',
         ]);
 

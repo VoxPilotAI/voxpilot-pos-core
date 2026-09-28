@@ -8,18 +8,21 @@ use Igniter\Local\Models\Location;
 use Igniter\VoxPilot\Events\VoxPilotOrderCreated;
 use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantApiToken;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class OrderBroadcastTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_order_creation_dispatches_event(): void
     {
         Event::fake([VoxPilotOrderCreated::class]);
 
         $tenant = Tenant::create([
             'name' => 'Broadcast Tenant',
-            'slug' => 'broadcast-tenant',
+            'slug' => 'broadcast-tenant-' . uniqid(),
             'status' => 'active',
         ]);
 
@@ -63,7 +66,7 @@ class OrderBroadcastTest extends TestCase
 
         $tenant = Tenant::create([
             'name' => 'Dedup Tenant',
-            'slug' => 'dedup-tenant',
+            'slug' => 'dedup-tenant-' . uniqid(),
             'status' => 'active',
         ]);
 

@@ -7,10 +7,13 @@ namespace Igniter\VoxPilot\Tests\Integration;
 use Igniter\Local\Models\Location;
 use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantApiToken;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class OrderIngestionEndpointTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected Tenant $tenant;
     protected string $plainToken;
     protected int $locationId;
@@ -21,7 +24,7 @@ class OrderIngestionEndpointTest extends TestCase
 
         $this->tenant = Tenant::create([
             'name' => 'Integration Tenant',
-            'slug' => 'integration-tenant',
+            'slug' => 'integration-tenant-' . uniqid(),
             'status' => 'active',
         ]);
 
@@ -112,7 +115,7 @@ class OrderIngestionEndpointTest extends TestCase
     {
         $otherTenant = Tenant::create([
             'name' => 'Other Tenant',
-            'slug' => 'other-tenant',
+            'slug' => 'other-tenant-' . uniqid(),
             'status' => 'active',
         ]);
 
