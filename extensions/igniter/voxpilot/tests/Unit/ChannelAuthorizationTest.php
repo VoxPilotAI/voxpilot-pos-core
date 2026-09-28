@@ -83,6 +83,10 @@ class ChannelAuthorizationTest extends TestCase
             $this->markTestSkipped('No admin user available');
         }
 
+        // Super users may subscribe to every location of their tenant; test a regular member.
+        $user->super_user = false;
+        $user->save();
+
         TenantMembership::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $user->user_id,
