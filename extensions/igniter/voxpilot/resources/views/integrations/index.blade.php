@@ -3,6 +3,46 @@
         <h4 class="mb-0">VoxPilot Integration</h4>
     </div>
 
+    @php
+        $isConnected = ($installation->status ?? null) === 'CONNECTED';
+    @endphp
+
+    @if($tenantId)
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Connection</h5>
+            </div>
+            <div class="card-body">
+                @if($isConnected)
+                    <p class="mb-3">
+                        <span class="badge bg-success">VoxPilot — Connected</span>
+                        @if($installation?->assistant_id)
+                            <span class="text-muted ms-2">Assistant: {{ $installation->assistant_id }}</span>
+                        @endif
+                    </p>
+                    <form method="POST" action="{{ admin_url('igniter/voxpilot/integrations/onDisconnect') }}"
+                          onsubmit="return confirm('Disconnect VoxPilot? Orders will stop until you connect again. The POS tenant is kept.');">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="fa fa-unlink"></i> Disconnect VoxPilot
+                        </button>
+                    </form>
+                @else
+                    <p class="mb-3 text-muted">
+                        Connect this restaurant to VoxPilot to choose a voice agent and enable order dispatch.
+                        Status: <code>{{ $installation->status ?? 'NOT_CONNECTED' }}</code>
+                    </p>
+                    <form method="POST" action="{{ admin_url('igniter/voxpilot/integrations/onConnect') }}">
+                        @csrf
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-plug"></i> Connect with VoxPilot
+                        </button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- Show new token once --}}
     @if($newToken)
         <div class="alert alert-success alert-dismissible">
@@ -18,19 +58,20 @@
         </div>
     @endif
 
-    {{-- Generate token form --}}
+    {{-- Advanced: manual tokens (local/dev) --}}
     @if($tenantId)
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="card-title mb-0">Generate API Token</h5>
+                <h5 class="card-title mb-0">Advanced — API Tokens</h5>
             </div>
             <div class="card-body">
+                <p class="text-muted small">Prefer <strong>Connect with VoxPilot</strong> above. Manual tokens are for local testing only.</p>
                 <form method="POST" action="{{ admin_url('igniter/voxpilot/integrations/onCreate') }}">
                     @csrf
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label">Token Name <span class="text-danger">*</span></label>
-                            <input type="text" name="name" class="form-control" placeholder="e.g. Production VoxPilot" required>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Local debug" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Default Location</label>
@@ -42,7 +83,7 @@
                             </select>
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-outline-secondary">
                                 <i class="fa fa-key"></i> Generate Token
                             </button>
                         </div>
@@ -51,7 +92,6 @@
             </div>
         </div>
 
-        {{-- Token list --}}
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">API Tokens</h5>
@@ -59,7 +99,7 @@
             <div class="card-body p-0">
                 @if($tokens->isEmpty())
                     <div class="p-4 text-muted text-center">
-                        No API tokens yet. Generate one above to connect VoxPilot.
+                        No API tokens yet.
                     </div>
                 @else
                     <div class="table-responsive">

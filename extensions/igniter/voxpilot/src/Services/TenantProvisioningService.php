@@ -7,7 +7,6 @@ namespace Igniter\VoxPilot\Services;
 use Igniter\Local\Models\Location;
 use Igniter\User\Models\User;
 use Igniter\VoxPilot\Models\Tenant;
-use Igniter\VoxPilot\Models\TenantApiToken;
 use Igniter\VoxPilot\Models\TenantMembership;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -30,7 +29,7 @@ class TenantProvisioningService
             $adminUser = $this->createAdminUser($payload, $tenant);
             $this->createMembership($tenant, $adminUser);
             $location = $this->createLocation($payload, $tenant);
-            $tokenResult = $this->createApiToken($tenant, $location, $adminUser);
+            // SPEC-011: mint API token only on Install (activate), not at provision time.
 
             return [
                 'provisioned' => true,
@@ -38,7 +37,7 @@ class TenantProvisioningService
                 'external_tenant_id' => $externalTenantId,
                 'location_id' => $location->location_id,
                 'admin_user_id' => $adminUser->user_id,
-                'api_token' => $tokenResult['plain_text'],
+                'api_token' => null,
                 'base_url' => config('app.url'),
             ];
         });
@@ -47,7 +46,6 @@ class TenantProvisioningService
     protected function buildExistingResponse(Tenant $tenant): array
     {
         $location = Location::where('tenant_id', $tenant->id)->first();
-        $activeToken = $tenant->activeApiTokens()->first();
 
         return [
             'provisioned' => false,
@@ -57,7 +55,7 @@ class TenantProvisioningService
             'admin_user_id' => $tenant->memberships()->where('role', 'owner')->value('user_id'),
             'api_token' => null,
             'base_url' => config('app.url'),
-            'message' => 'Tenant already exists. API token cannot be retrieved — generate a new one from the admin panel if needed.',
+            'message' => 'Tenant already exists. Connect with VoxPilot from the admin panel to install.',
         ];
     }
 
@@ -143,16 +141,5 @@ class TenantProvisioningService
         $location->save();
 
         return $location;
-    }
-
-    protected function createApiToken(Tenant $tenant, Location $location, User $adminUser): array
-    {
-        return TenantApiToken::generateToken(
-            tenantId: $tenant->id,
-            name: 'VoxPilot Auto-Provisioned',
-            defaultLocationId: $location->location_id,
-            createdByUserId: $adminUser->user_id,
-            abilities: ['orders:create'],
-        );
     }
 }
