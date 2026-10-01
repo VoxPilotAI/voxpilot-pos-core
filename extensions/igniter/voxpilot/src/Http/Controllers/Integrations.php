@@ -7,11 +7,7 @@ namespace Igniter\VoxPilot\Http\Controllers;
 use Igniter\Admin\Classes\AdminController;
 use Igniter\Admin\Facades\AdminMenu;
 use Igniter\Local\Models\Location;
-use Igniter\VoxPilot\Models\Installation;
-use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantApiToken;
-use Igniter\VoxPilot\Services\InstallationException;
-use Igniter\VoxPilot\Services\InstallationService;
 use Igniter\VoxPilot\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,58 +39,8 @@ class Integrations extends AdminController
 
         $this->vars['newToken'] = session('voxpilot_new_token');
         $this->vars['tenantId'] = $tenantId;
-        $this->vars['installation'] = $tenantId
-            ? Installation::where('tenant_id', $tenantId)->first()
-            : null;
 
         return $this->makeView('igniter.voxpilot::integrations.index');
-    }
-
-    /** SPEC-011: Connect with VoxPilot — redirect browser with opaque code. */
-    public function onConnect(): RedirectResponse
-    {
-        $tenantId = $this->resolveTenantId();
-        if (!$tenantId) {
-            flash()->error('No tenant found. Run: php artisan voxpilot:bootstrap-tenant');
-            return back();
-        }
-
-        try {
-            $result = app(InstallationService::class)->createAuthorization(
-                $tenantId,
-                $this->getUser()?->user_id,
-            );
-
-            return redirect()->away($result['authorization_url']);
-        } catch (InstallationException $e) {
-            flash()->error($e->getMessage());
-            return back();
-        }
-    }
-
-    /** SPEC-011: Disconnect VoxPilot — revoke install tokens, keep POS tenant. */
-    public function onDisconnect(): RedirectResponse
-    {
-        $tenantId = $this->resolveTenantId();
-        if (!$tenantId) {
-            flash()->error('No tenant found.');
-            return back();
-        }
-
-        $tenant = Tenant::find($tenantId);
-        if (!$tenant?->external_tenant_id) {
-            flash()->error('Tenant is missing external_tenant_id; cannot disconnect.');
-            return back();
-        }
-
-        try {
-            app(InstallationService::class)->deactivate((string) $tenant->external_tenant_id);
-            flash()->success('VoxPilot disconnected. Your POS tenant was kept.');
-        } catch (InstallationException $e) {
-            flash()->error($e->getMessage());
-        }
-
-        return redirect()->to(admin_url('igniter/voxpilot/integrations'));
     }
 
     public function onCreate(Request $request): RedirectResponse
@@ -125,7 +71,7 @@ class Integrations extends AdminController
         $result = TenantApiToken::generateToken(
             tenantId: $tenantId,
             name: $request->input('name'),
-            defaultLocationId: $defaultLocationId ? (int) $defaultLocationId : null,
+            defaultLocationId: $defaultLocationId ? (int)$defaultLocationId : null,
             createdByUserId: $this->getUser()->user_id,
         );
 
