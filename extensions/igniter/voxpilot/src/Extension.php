@@ -41,6 +41,7 @@ class Extension extends BaseExtension
         $this->registerTenantScopes();
         $this->registerApiRoutes();
         $this->registerProvisioningRoutes();
+        $this->registerOAuthRoutes();
         $this->registerChannels();
         $this->registerOrderStatusListener();
     }
@@ -55,7 +56,7 @@ class Extension extends BaseExtension
                         'priority' => 50,
                         'class' => 'voxpilot-integrations',
                         'href' => admin_url('igniter/voxpilot/integrations'),
-                        'title' => 'VoxPilot Tokens',
+                        'title' => 'VoxPilot',
                         'permission' => 'Igniter.VoxPilot.Manage',
                     ],
                     'voxpilot-incoming' => [
@@ -105,6 +106,14 @@ class Extension extends BaseExtension
         Route::prefix('api/voxpilot/provision')
             ->middleware(['api', VerifyProvisioningSecret::class])
             ->group(__DIR__.'/../routes/provisioning.php');
+    }
+
+    /** SPEC-011: code exchange + install activate/deactivate (S2S Bearer secret). */
+    protected function registerOAuthRoutes(): void
+    {
+        Route::prefix('api/voxpilot')
+            ->middleware(['api', VerifyProvisioningSecret::class])
+            ->group(__DIR__.'/../routes/oauth.php');
     }
 
     protected function registerChannels(): void
