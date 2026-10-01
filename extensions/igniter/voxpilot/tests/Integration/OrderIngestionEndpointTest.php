@@ -93,6 +93,37 @@ class OrderIngestionEndpointTest extends TestCase
         $response->assertJsonPath('data.is_duplicate', false);
     }
 
+    public function test_size_option_is_priced_and_stored_on_the_order(): void
+    {
+        if (!isset($this->locationId)) {
+            $this->markTestSkipped('No location available');
+        }
+        $menu = \Igniter\Cart\Models\Menu::withoutGlobalScopes()->where('menu_name', 'Pizza Margherita')->first();
+        if (!$menu) {
+            $this->markTestSkipped('Bella Napoli menu not seeded');
+        }
+
+        $payload = [
+            'external_order_id' => 'vp_test_size_001',
+            'source' => 'voice',
+            'customer' => ['name' => 'Size Test', 'phone' => '+50688887777'],
+            'fulfillment' => ['type' => 'pickup', 'requested_time' => 'ASAP'],
+            'items' => [['name' => 'Pizza Margherita', 'size' => 'mediana', 'quantity' => 1, 'unit_price' => 14.99]],
+        ];
+        $response = $this->postJson('/api/voxpilot/orders', $payload, ['Authorization' => 'Bearer '.$this->plainToken]);
+
+        $response->assertStatus(201);
+        $orderId = (int) $response->json('data.order_id');
+        $base = (float) $menu->getBuyablePrice();
+        $this->assertGreaterThan($base, (float) $response->json('data.order_total'), 'the size option is charged');
+
+        // The kitchen sees the size: it is stored against this order and its line.
+        $option = \Illuminate\Support\Facades\DB::table('order_menu_options')->where('order_id', $orderId)->first();
+        $this->assertNotNull($option, 'size option stored with the order id');
+        $this->assertSame('mediana', mb_strtolower((string) $option->order_option_name));
+        $this->assertGreaterThan(0, (int) $option->menu_option_id);
+    }
+
     public function test_duplicate_external_order_id_returns_existing(): void
     {
         if (!isset($this->locationId)) {

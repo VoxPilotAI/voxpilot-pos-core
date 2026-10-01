@@ -226,7 +226,11 @@ class OrderIngestionService
 
         try {
             $oov = new OrderMenuOptionValue();
+            // The admin order view and Incoming Orders read options by order; without order_id the
+            // size ("Mediana") was saved but never shown to the kitchen.
+            $oov->order_id = $orderMenu->order_id;
             $oov->order_menu_id = $orderMenu->order_menu_id;
+            $oov->menu_option_id = $option['menu_option_id'] ?? 0;
             $oov->menu_option_value_id = $option['option_value_id'];
             $oov->order_option_name = $option['name'] ?? '';
             $oov->order_option_price = $option['price'] ?? 0;
