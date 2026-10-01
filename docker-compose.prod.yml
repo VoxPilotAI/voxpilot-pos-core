@@ -21,7 +21,7 @@ services:
       APP_NAME: "VoxPilot POS"
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_URL: https://pos.voxpilothq.io
+      APP_URL: ${APP_URL:-https://pos.voxpilothq.io}
       APP_KEY: ${APP_KEY}
       IGNITER_LOCATION_MODE: ${IGNITER_LOCATION_MODE:-multiple}
       DB_CONNECTION: mysql
@@ -39,7 +39,7 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID}
       REVERB_APP_KEY: ${REVERB_APP_KEY}
       REVERB_APP_SECRET: ${REVERB_APP_SECRET}
-      REVERB_HOST: pos.voxpilothq.io
+      REVERB_HOST: ${REVERB_HOST:-pos.voxpilothq.io}
       REVERB_PORT: "443"
       REVERB_SCHEME: https
       REVERB_SERVER_HOST: "0.0.0.0"
@@ -53,6 +53,16 @@ services:
       MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@voxpilothq.io}
       MAIL_FROM_NAME: "VoxPilot POS"
+      # Mail and the owner invite go through the database queue (queue-worker in supervisor).
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
+      # VoxPilot (SPEC-011). Secrets: same values as the VoxPilot backend's POS_PROVISIONING_SECRET /
+      # POS_HMAC_SECRET, >= 32 chars; without the provisioning secret the VoxPilot endpoints answer 503.
+      VOXPILOT_PROVISIONING_SECRET: ${VOXPILOT_PROVISIONING_SECRET:-}
+      VOXPILOT_HMAC_SECRET: ${VOXPILOT_HMAC_SECRET:-}
+      # Where "Connect with VoxPilot" sends the browser (VoxPilot app URL + /integrations/pos/install).
+      VOXPILOT_APP_INSTALL_URL: ${VOXPILOT_APP_INSTALL_URL:-https://app.voxpilothq.io/integrations/pos/install}
+      # E-mail a newly provisioned owner the set-password invite.
+      VOXPILOT_SEND_OWNER_INVITE: ${VOXPILOT_SEND_OWNER_INVITE:-true}
     volumes:
       - pos_storage:/var/www/html/storage
       - pos_bootstrap_cache:/var/www/html/bootstrap/cache
