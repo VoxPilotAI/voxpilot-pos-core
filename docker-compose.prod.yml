@@ -23,7 +23,7 @@ services:
       APP_DEBUG: "false"
       APP_URL: https://pos.voxpilothq.io
       APP_KEY: ${APP_KEY}
-      IGNITER_LOCATION_MODE: ${IGNITER_LOCATION_MODE:-single}
+      IGNITER_LOCATION_MODE: ${IGNITER_LOCATION_MODE:-multiple}
       DB_CONNECTION: mysql
       DB_HOST: pos-db
       DB_PORT: "3306"

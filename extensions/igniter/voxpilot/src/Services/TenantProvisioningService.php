@@ -11,11 +11,17 @@ use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantMembership;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class TenantProvisioningService
 {
-    private const VOXPILOT_MANAGE_PERMISSION = 'Igniter.VoxPilot.Manage';
+    /**
+     * What a provisioned restaurant owner may do: connect VoxPilot and work its own orders (orders
+     * and locations are tenant-scoped). Menus, customers and the dashboard are global in this POS,
+     * so they are deliberately not granted.
+     */
+    private const OWNER_PERMISSIONS = ['Igniter.VoxPilot.Manage', 'Admin.Orders'];
 
     public function provision(array $payload): array
     {
@@ -26,11 +32,14 @@ class TenantProvisioningService
             return $this->buildExistingResponse($existing);
         }
 
-        return DB::transaction(function () use ($payload, $externalTenantId) {
+        $ownerCreated = false;
+        $result = DB::transaction(function () use ($payload, $externalTenantId, &$ownerCreated) {
             $tenant = $this->createTenant($payload, $externalTenantId);
-            $adminUser = $this->createAdminUser($payload, $tenant);
+            [$adminUser, $ownerCreated] = $this->createAdminUser($payload, $tenant);
             $this->createMembership($tenant, $adminUser);
             $location = $this->createLocation($payload, $tenant);
+            // TastyIgniter shows a staff member only the orders of their assigned locations.
+            $this->assignOwnerToLocation($adminUser, $location);
             // SPEC-011: mint API token only on Install (activate), not at provision time.
 
             return [
@@ -41,8 +50,41 @@ class TenantProvisioningService
                 'admin_user_id' => $adminUser->user_id,
                 'api_token' => null,
                 'base_url' => config('app.url'),
+                'pos_admin_url' => $this->adminUrl(),
+                'owner_invite_sent' => false,
             ];
         });
+
+        // The owner is created with a random password nobody knows. The standard TastyIgniter staff
+        // invite (set-your-password link) lets them sign in to the admin and click Connect with
+        // VoxPilot. Sent after commit, and only for an owner created here; a mail failure never
+        // undoes the provisioning.
+        if ($ownerCreated && ($payload['send_owner_invite'] ?? true) && config('voxpilot.send_owner_invite', true)) {
+            $result['owner_invite_sent'] = $this->sendOwnerInvite((int) $result['admin_user_id']);
+        }
+
+        return $result;
+    }
+
+    protected function sendOwnerInvite(int $userId): bool
+    {
+        try {
+            User::findOrFail($userId)->sendInvite();
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('VoxPilot provisioning: owner invite email failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    protected function adminUrl(): string
+    {
+        return rtrim((string) config('app.url'), '/').'/admin';
     }
 
     protected function buildExistingResponse(Tenant $tenant): array
@@ -57,6 +99,8 @@ class TenantProvisioningService
             'admin_user_id' => $tenant->memberships()->where('role', 'owner')->value('user_id'),
             'api_token' => null,
             'base_url' => config('app.url'),
+            'pos_admin_url' => $this->adminUrl(),
+            'owner_invite_sent' => false,
             'message' => 'Tenant already exists. Connect with VoxPilot from the admin panel to install.',
         ];
     }
@@ -91,7 +135,8 @@ class TenantProvisioningService
         ]);
     }
 
-    protected function createAdminUser(array $payload, Tenant $tenant): User
+    /** @return array{0: User, 1: bool} the owner and whether it was created now */
+    protected function createAdminUser(array $payload, Tenant $tenant): array
     {
         $email = $payload['admin_email'];
         $ownerRole = $this->ensureOwnerRoleWithVoxPilotPermission();
@@ -100,7 +145,7 @@ class TenantProvisioningService
         if ($existingUser) {
             $this->assignOwnerRole($existingUser, $ownerRole);
 
-            return $existingUser;
+            return [$existingUser, false];
         }
 
         $user = new User;
@@ -114,12 +159,12 @@ class TenantProvisioningService
         $this->assignOwnerRole($user, $ownerRole);
         $user->save();
 
-        return $user;
+        return [$user, true];
     }
 
     /**
-     * Restaurant owners need Igniter.VoxPilot.Manage to see Tools → VoxPilot (Connect).
-     * TastyIgniter stores role permissions as a map: permission => 1.
+     * Restaurant owners need Igniter.VoxPilot.Manage (Tools → VoxPilot, Connect) and Admin.Orders
+     * (their orders). TastyIgniter stores role permissions as a map: permission => 1.
      */
     protected function ensureOwnerRoleWithVoxPilotPermission(): ?UserRole
     {
@@ -130,9 +175,13 @@ class TenantProvisioningService
             return null;
         }
 
+        // Add what is missing; never drop permissions the role already has.
         $perms = is_array($ownerRole->permissions) ? $ownerRole->permissions : [];
-        if (!array_key_exists(self::VOXPILOT_MANAGE_PERMISSION, $perms)) {
-            $perms[self::VOXPILOT_MANAGE_PERMISSION] = 1;
+        $missing = array_diff(self::OWNER_PERMISSIONS, array_keys($perms));
+        if ($missing) {
+            foreach ($missing as $permission) {
+                $perms[$permission] = 1;
+            }
             $ownerRole->permissions = $perms;
             $ownerRole->save();
         }
@@ -169,6 +218,11 @@ class TenantProvisioningService
             'user_id' => $user->user_id,
             'role' => 'owner',
         ]);
+    }
+
+    protected function assignOwnerToLocation(User $user, Location $location): void
+    {
+        $user->locations()->syncWithoutDetaching([$location->location_id]);
     }
 
     protected function createLocation(array $payload, Tenant $tenant): Location

@@ -217,6 +217,41 @@ Click "Revoke" in the admin UI. Revoked tokens return 401 immediately.
 
 ---
 
+## Provisioning and Connect with VoxPilot (SPEC-011)
+
+This is the VoxPilot POS, the first-party path. A business with its own POS connects it from VoxPilot through the generic API automation instead; nothing below applies to it.
+
+- **`POST /api/voxpilot/provision/tenants`** (Bearer `VOXPILOT_PROVISIONING_SECRET`):
+  - VoxPilot calls it only for accounts that ticked *Activate VoxPilot POS*.
+  - It creates the tenant, the owner, the default location and the membership.
+  - It is idempotent by `external_tenant_id`, and it **never returns an order token** (`api_token: null`).
+  - The response includes `pos_admin_url` and `owner_invite_sent`.
+- **Owner invite.**
+  - A newly created owner receives TastyIgniter's staff invite: a set-your-password link to `/admin/login/reset`.
+  - It is sent after commit through the mail queue, so the `queue-worker` must run.
+  - Disable it per request (`send_owner_invite: false`) or globally (`VOXPILOT_SEND_OWNER_INVITE=false`).
+  - The invite subject uses the global site name; set it to something neutral (e.g. "VoxPilot POS").
+- **Connect with VoxPilot** (Tools → VoxPilot):
+  - The admin gets a one-time code (10 min) and is redirected to VoxPilot.
+  - There the owner picks **one** assistant that is not yet connected to a VoxPilot POS.
+  - VoxPilot then calls `POST /api/voxpilot/installations/activate`, which mints the order token, returns it once and binds the assistant.
+  - **One POS ↔ one assistant**: a second activation is refused (409).
+- **Disconnect** (POS admin or VoxPilot) revokes the tokens and keeps the restaurant and its orders.
+- **Owner access.** The provisioned owner gets the Owner role and is assigned to the restaurant's location.
+  - The role has `Igniter.VoxPilot.Manage` and `Admin.Orders`, added and never overwritten.
+  - Menus, customers and the dashboard are global in this POS, so they are not granted.
+- **Location mode.** Run with `IGNITER_LOCATION_MODE=multiple`. In `single` mode every admin is pinned to the default location, and an owner sees no orders.
+- **Menus are per location.** A new restaurant has none: the agent gets no menu, and order lines arrive as `[sin mapear]`. The owner (or support) must attach or build its menu.
+- **Sizes.** VoxPilot sends `items.*.size`. The matched size option (e.g. "Mediana") is priced and stored on the order line, so the kitchen sees it.
+- **Migrations:** run `php artisan igniter:up`. The `external_tenant_id` migration skips the column if an older database already has it.
+- **Tests:** run them against a **separate** database, never `voxpilot_pos`:
+
+  ```bash
+  docker exec -e DB_DATABASE=voxpilot_pos_test voxpilot-ai-pos sh -c 'cd /var/www/html && vendor/bin/phpunit extensions/igniter/voxpilot/tests'
+  ```
+
+  Create the copy first; see `VOXPILOT_POS_LOCAL_E2E.md` in voxpilot-force.
+
 ## Troubleshooting
 
 | Problem | Solution |
