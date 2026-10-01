@@ -6,17 +6,16 @@ namespace Igniter\VoxPilot\Services;
 
 use Igniter\Local\Models\Location;
 use Igniter\User\Models\User;
-use Igniter\User\Models\UserRole;
 use Igniter\VoxPilot\Models\Tenant;
+use Igniter\VoxPilot\Models\TenantApiToken;
 use Igniter\VoxPilot\Models\TenantMembership;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class TenantProvisioningService
 {
-    private const VOXPILOT_MANAGE_PERMISSION = 'Igniter.VoxPilot.Manage';
-
     public function provision(array $payload): array
     {
         $externalTenantId = $payload['external_tenant_id'];
@@ -31,7 +30,7 @@ class TenantProvisioningService
             $adminUser = $this->createAdminUser($payload, $tenant);
             $this->createMembership($tenant, $adminUser);
             $location = $this->createLocation($payload, $tenant);
-            // SPEC-011: mint API token only on Install (activate), not at provision time.
+            $tokenResult = $this->createApiToken($tenant, $location, $adminUser);
 
             return [
                 'provisioned' => true,
@@ -39,7 +38,7 @@ class TenantProvisioningService
                 'external_tenant_id' => $externalTenantId,
                 'location_id' => $location->location_id,
                 'admin_user_id' => $adminUser->user_id,
-                'api_token' => null,
+                'api_token' => $tokenResult['plain_text'],
                 'base_url' => config('app.url'),
             ];
         });
@@ -48,6 +47,7 @@ class TenantProvisioningService
     protected function buildExistingResponse(Tenant $tenant): array
     {
         $location = Location::where('tenant_id', $tenant->id)->first();
+        $activeToken = $tenant->activeApiTokens()->first();
 
         return [
             'provisioned' => false,
@@ -57,7 +57,7 @@ class TenantProvisioningService
             'admin_user_id' => $tenant->memberships()->where('role', 'owner')->value('user_id'),
             'api_token' => null,
             'base_url' => config('app.url'),
-            'message' => 'Tenant already exists. Connect with VoxPilot from the admin panel to install.',
+            'message' => 'Tenant already exists. API token cannot be retrieved — generate a new one from the admin panel if needed.',
         ];
     }
 
@@ -70,7 +70,7 @@ class TenantProvisioningService
         $candidateSlug = $slug;
         while (Tenant::where('slug', $candidateSlug)->exists()) {
             $counter++;
-            $candidateSlug = $slug.'-'.$counter;
+            $candidateSlug = $slug . '-' . $counter;
         }
 
         $settings = [
@@ -94,16 +94,13 @@ class TenantProvisioningService
     protected function createAdminUser(array $payload, Tenant $tenant): User
     {
         $email = $payload['admin_email'];
-        $ownerRole = $this->ensureOwnerRoleWithVoxPilotPermission();
 
         $existingUser = User::where('email', $email)->first();
         if ($existingUser) {
-            $this->assignOwnerRole($existingUser, $ownerRole);
-
             return $existingUser;
         }
 
-        $user = new User;
+        $user = new User();
         $user->name = $payload['admin_name'] ?? $payload['company_name'] ?? 'Admin';
         $user->email = $email;
         $user->username = Str::slug($email, '_');
@@ -111,47 +108,9 @@ class TenantProvisioningService
         $user->super_user = false;
         $user->is_activated = true;
         $user->status = true;
-        $this->assignOwnerRole($user, $ownerRole);
         $user->save();
 
         return $user;
-    }
-
-    /**
-     * Restaurant owners need Igniter.VoxPilot.Manage to see Tools → VoxPilot (Connect).
-     * TastyIgniter stores role permissions as a map: permission => 1.
-     */
-    protected function ensureOwnerRoleWithVoxPilotPermission(): ?UserRole
-    {
-        $ownerRole = UserRole::query()->where('code', 'owner')->first()
-            ?? UserRole::query()->find(1);
-
-        if (!$ownerRole) {
-            return null;
-        }
-
-        $perms = is_array($ownerRole->permissions) ? $ownerRole->permissions : [];
-        if (!array_key_exists(self::VOXPILOT_MANAGE_PERMISSION, $perms)) {
-            $perms[self::VOXPILOT_MANAGE_PERMISSION] = 1;
-            $ownerRole->permissions = $perms;
-            $ownerRole->save();
-        }
-
-        return $ownerRole;
-    }
-
-    protected function assignOwnerRole(User $user, ?UserRole $ownerRole): void
-    {
-        if (!$ownerRole) {
-            return;
-        }
-
-        if ((int) $user->user_role_id !== (int) $ownerRole->user_role_id) {
-            $user->user_role_id = $ownerRole->user_role_id;
-            if ($user->exists) {
-                $user->save();
-            }
-        }
     }
 
     protected function createMembership(Tenant $tenant, User $user): void
@@ -175,7 +134,7 @@ class TenantProvisioningService
     {
         $locationName = $payload['location_name'] ?? $payload['company_name'] ?? $tenant->name;
 
-        $location = new Location;
+        $location = new Location();
         $location->location_name = $locationName;
         $location->tenant_id = $tenant->id;
         $location->location_email = $payload['admin_email'] ?? '';
@@ -184,5 +143,16 @@ class TenantProvisioningService
         $location->save();
 
         return $location;
+    }
+
+    protected function createApiToken(Tenant $tenant, Location $location, User $adminUser): array
+    {
+        return TenantApiToken::generateToken(
+            tenantId: $tenant->id,
+            name: 'VoxPilot Auto-Provisioned',
+            defaultLocationId: $location->location_id,
+            createdByUserId: $adminUser->user_id,
+            abilities: ['orders:create'],
+        );
     }
 }
