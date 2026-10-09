@@ -99,7 +99,7 @@ class ProvisioningEndpointTest extends TestCase
         $this->assertSame($tenantsAfterFirst, Tenant::count());
     }
 
-    public function test_owner_invite_is_queued_in_the_owner_language(): void
+    public function test_owner_gets_the_voxpilot_language_for_invite_and_password_emails(): void
     {
         Mail::fake();
         $payload = $this->payload() + ['locale' => 'es-CR'];
@@ -108,18 +108,30 @@ class ProvisioningEndpointTest extends TestCase
             ->assertStatus(201)
             ->assertJsonPath('data.owner_invite_sent', true);
 
+        $owner = User::where('email', $payload['admin_email'])->firstOrFail();
+        // Stored as the owner's TastyIgniter language: the admin locale follows it.
+        $this->assertSame('es', $owner->getLocale());
+        $this->assertTrue((bool) $owner->language->status);
+
         Mail::assertQueued(AnonymousTemplateMailable::class, fn (AnonymousTemplateMailable $mail) => $mail->getTemplateCode() === 'igniter.user::mail.invite'
             && $mail->locale === 'es'
             && $mail->hasTo($payload['admin_email']));
+
+        // A later "forgot password" from the signed-out admin login uses it too.
+        $owner->mailSendResetPasswordRequest(['reset_link' => 'https://pos.test/admin/login/reset?code=x']);
+        Mail::assertQueued(AnonymousTemplateMailable::class, fn (AnonymousTemplateMailable $mail) => $mail->getTemplateCode() === 'igniter.user::mail.admin_password_reset_request'
+            && $mail->locale === 'es');
     }
 
-    public function test_owner_invite_falls_back_to_english_for_unsupported_languages(): void
+    public function test_owner_language_falls_back_to_english_for_unsupported_languages(): void
     {
         Mail::fake();
+        $payload = $this->payload() + ['locale' => 'ja'];
 
-        $this->postJson('/api/voxpilot/provision/tenants', $this->payload() + ['locale' => 'ja'], $this->auth())
+        $this->postJson('/api/voxpilot/provision/tenants', $payload, $this->auth())
             ->assertStatus(201);
 
+        $this->assertSame('en', User::where('email', $payload['admin_email'])->firstOrFail()->getLocale());
         Mail::assertQueued(AnonymousTemplateMailable::class, fn (AnonymousTemplateMailable $mail) => $mail->locale === 'en');
     }
 

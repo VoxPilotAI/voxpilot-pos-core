@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot\Services;
 
 use Igniter\Local\Models\Location;
-use Igniter\System\Mail\AnonymousTemplateMailable;
 use Igniter\User\Models\User;
 use Igniter\User\Models\UserRole;
 use Igniter\VoxPilot\Models\Tenant;
@@ -14,9 +13,7 @@ use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Symfony\Component\Mime\Address;
 
 class TenantProvisioningService
 {
@@ -40,6 +37,9 @@ class TenantProvisioningService
         $result = DB::transaction(function () use ($payload, $externalTenantId, &$ownerCreated) {
             $tenant = $this->createTenant($payload, $externalTenantId);
             [$adminUser, $ownerCreated] = $this->createAdminUser($payload, $tenant);
+            if ($ownerCreated) {
+                $this->applyOwnerLanguage($adminUser, $payload['locale'] ?? null);
+            }
             $this->createMembership($tenant, $adminUser);
             $location = $this->createLocation($payload, $tenant);
             // TastyIgniter shows a staff member only the orders of their assigned locations.
@@ -64,37 +64,27 @@ class TenantProvisioningService
         // VoxPilot. Sent after commit, and only for an owner created here; a mail failure never
         // undoes the provisioning.
         if ($ownerCreated && ($payload['send_owner_invite'] ?? true) && config('voxpilot.send_owner_invite', true)) {
-            $result['owner_invite_sent'] = $this->sendOwnerInvite(
-                (int) $result['admin_user_id'],
-                Locale::normalize($payload['locale'] ?? null),
-            );
+            $result['owner_invite_sent'] = $this->sendOwnerInvite((int) $result['admin_user_id']);
         }
 
         return $result;
     }
 
     /**
-     * TastyIgniter's staff invite (igniter.user::mail.invite, rendered with the VoxPilot template),
-     * queued in the owner's language. User::sendInvite() queues it in the request locale, so the
-     * same steps are done here with the locale set on the mailable.
+     * The owner's language (VoxPilot account language) as their TastyIgniter language: the admin
+     * locale and every staff email (invite, password reset) follow it. English when none is sent.
      */
-    protected function sendOwnerInvite(int $userId, string $locale): bool
+    protected function applyOwnerLanguage(User $user, ?string $locale): void
+    {
+        $user->language_id = Locale::language(Locale::normalize($locale))->getKey();
+        $user->save();
+    }
+
+    /** TastyIgniter's staff invite, sent in the owner's language by LocalizedMailHelper. */
+    protected function sendOwnerInvite(int $userId): bool
     {
         try {
-            $user = User::findOrFail($userId);
-            $inviteCode = Str::random(42);
-            User::where('user_id', $userId)->update([
-                'reset_code' => $inviteCode,
-                'reset_time' => now(),
-                'invited_at' => now(),
-            ]);
-
-            Mail::queue(
-                AnonymousTemplateMailable::create('igniter.user::mail.invite')
-                    ->applyCallback(new Address($user->email, (string) $user->name))
-                    ->withSerializedData(array_merge($user->mailGetData(), ['invite_code' => $inviteCode]))
-                    ->locale($locale),
-            );
+            User::findOrFail($userId)->sendInvite();
 
             return true;
         } catch (\Throwable $e) {

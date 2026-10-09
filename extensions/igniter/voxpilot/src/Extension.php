@@ -6,6 +6,7 @@ namespace Igniter\VoxPilot;
 
 use Igniter\Cart\Models\Order;
 use Igniter\Local\Models\Location;
+use Igniter\System\Helpers\MailHelper;
 use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\ApplyBranding;
 use Igniter\VoxPilot\Console\BootstrapTenant;
@@ -15,6 +16,7 @@ use Igniter\VoxPilot\Http\Middleware\StorefrontLanding;
 use Igniter\VoxPilot\Http\Middleware\VerifyHmacSignature;
 use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
 use Igniter\VoxPilot\Jobs\NotifyStatusChange;
+use Igniter\VoxPilot\Mail\LocalizedMailHelper;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Scopes\TenantLocationScope;
 use Igniter\VoxPilot\Scopes\TenantOrderScope;
@@ -31,6 +33,8 @@ class Extension extends BaseExtension
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+        // Staff emails go out in the staff member's language (see LocalizedMailHelper).
+        $this->app->bind(MailHelper::class, LocalizedMailHelper::class);
 
         $this->mergeConfigFrom(__DIR__.'/../config/voxpilot.php', 'voxpilot');
 
