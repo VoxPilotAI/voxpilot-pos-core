@@ -161,6 +161,8 @@ class ProvisioningEndpointTest extends TestCase
             'state' => $authorization['state'],
         ], $this->auth());
         $exchange->assertOk()->assertJsonPath('data.external_tenant_id', $payload['external_tenant_id']);
+        // VoxPilot sends the owner back here once the install completes.
+        $this->assertSame(admin_url('igniter/voxpilot/integrations'), $exchange->json('data.return_url'));
 
         // The same code cannot be used twice.
         $this->postJson('/api/voxpilot/oauth/token', [

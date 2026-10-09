@@ -70,7 +70,7 @@ class InstallationService
     }
 
     /**
-     * @return array{pos_tenant_id: int, external_tenant_id: string, location_id: int|null, restaurant_name: string, state: string}
+     * @return array{pos_tenant_id: int, external_tenant_id: string, location_id: int|null, restaurant_name: string, state: string, return_url: string}
      */
     public function exchangeCode(string $code, string $state): array
     {
@@ -111,6 +111,9 @@ class InstallationService
                 'location_id' => $location?->location_id,
                 'restaurant_name' => (string) $tenant->name,
                 'state' => (string) $row->state,
+                // Where VoxPilot sends the owner once the install completes: back to this POS.
+                // Given server-to-server (secret-authenticated), never taken from the browser.
+                'return_url' => admin_url('igniter/voxpilot/integrations'),
             ];
         });
     }
