@@ -85,7 +85,9 @@ class NotifyStatusChange implements ShouldQueue
     protected function resolveCallbackUrl(Tenant $tenant): ?string
     {
         $settings = $tenant->settings ?? [];
-        $url = $settings['webhook_callback_url'] ?? null;
+        // Same base as the dashboard's VoxPilot reads: VOXPILOT_API_URL when the POS reaches VoxPilot
+        // through an internal address, else the public API URL given at provisioning.
+        $url = config('voxpilot.api_url') ?: ($settings['webhook_callback_url'] ?? null);
 
         if (!$url) {
             Log::info("[voxpilot] status webhook skipped: no callback URL for tenant {$this->tenantId}");
