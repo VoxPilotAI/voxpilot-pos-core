@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot;
 
+use Igniter\Admin\Facades\Template;
+use Igniter\Admin\Http\Controllers\Dashboard;
 use Igniter\Cart\Models\Order;
 use Igniter\Local\Models\Location;
 use Igniter\System\Helpers\MailHelper;
 use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\ApplyBranding;
+use Igniter\VoxPilot\DashboardWidgets;
 use Igniter\VoxPilot\Console\BootstrapTenant;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantForAdmin;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
@@ -56,9 +59,54 @@ class Extension extends BaseExtension
     }
 
     #[Override]
+    public function registerDashboardWidgets(): array
+    {
+        return [
+            DashboardWidgets\Overview::class => ['code' => 'vp_overview', 'label' => 'igniter.voxpilot::dashboard.widget_overview'],
+            DashboardWidgets\OrdersByHour::class => ['code' => 'vp_orders_by_hour', 'label' => 'igniter.voxpilot::dashboard.widget_orders_by_hour'],
+            DashboardWidgets\Assistant::class => ['code' => 'vp_assistant', 'label' => 'igniter.voxpilot::dashboard.widget_assistant'],
+            DashboardWidgets\RecentOrders::class => ['code' => 'vp_recent_orders', 'label' => 'igniter.voxpilot::dashboard.widget_recent_orders'],
+            DashboardWidgets\TopItems::class => ['code' => 'vp_top_items', 'label' => 'igniter.voxpilot::dashboard.widget_top_items'],
+        ];
+    }
+
+    /**
+     * The VoxPilot dashboard replaces TastyIgniter's default one (onboarding checklist, TastyIgniter
+     * news, generic stats). Users who saved their own layout keep it until they reset it.
+     */
+    protected function registerDefaultDashboard(): void
+    {
+        Dashboard::extend(function (Dashboard $controller): void {
+            $controller->containerConfig['defaultWidgets'] = [
+                'vp_overview' => ['widget' => 'vp_overview', 'priority' => 10, 'width' => '12'],
+                'vp_orders_by_hour' => ['widget' => 'vp_orders_by_hour', 'priority' => 20, 'width' => '8'],
+                'vp_assistant' => ['widget' => 'vp_assistant', 'priority' => 30, 'width' => '4'],
+                'vp_recent_orders' => ['widget' => 'vp_recent_orders', 'priority' => 40, 'width' => '8'],
+                'vp_top_items' => ['widget' => 'vp_top_items', 'priority' => 50, 'width' => '4'],
+            ];
+        });
+    }
+
+    #[Override]
     public function registerNavigation(): array
     {
         return [
+            'voxpilot-board' => [
+                'priority' => 5,
+                'class' => 'voxpilot-board',
+                'icon' => 'fa-table-columns',
+                'href' => admin_url('igniter/voxpilot/board'),
+                'title' => lang('igniter.voxpilot::board.nav'),
+                'permission' => 'Admin.Orders',
+            ],
+            'voxpilot-live' => [
+                'priority' => 6,
+                'class' => 'voxpilot-incoming-orders',
+                'icon' => 'fa-tower-broadcast',
+                'href' => admin_url('igniter/voxpilot/incoming_orders'),
+                'title' => lang('igniter.voxpilot::board.nav_live'),
+                'permission' => 'Igniter.VoxPilot.Manage',
+            ],
             'tools' => [
                 'child' => [
                     'voxpilot' => [
@@ -66,13 +114,6 @@ class Extension extends BaseExtension
                         'class' => 'voxpilot-integrations',
                         'href' => admin_url('igniter/voxpilot/integrations'),
                         'title' => 'VoxPilot',
-                        'permission' => 'Igniter.VoxPilot.Manage',
-                    ],
-                    'voxpilot-incoming' => [
-                        'priority' => 49,
-                        'class' => 'voxpilot-incoming-orders',
-                        'href' => admin_url('igniter/voxpilot/incoming_orders'),
-                        'title' => 'Incoming Orders',
                         'permission' => 'Igniter.VoxPilot.Manage',
                     ],
                 ],
@@ -118,6 +159,34 @@ class Extension extends BaseExtension
         View::prependNamespace('igniter.user', __DIR__.'/../resources/views/overrides/igniter.user');
 
         $this->app['router']->pushMiddlewareToGroup('igniter', StorefrontLanding::class);
+
+        $this->registerAdminSkin();
+        $this->registerDefaultDashboard();
+    }
+
+    /**
+     * VoxPilot look for the whole admin (public/voxpilot/admin): light and dark mode on top of
+     * Bootstrap 5.3's data-bs-theme. The theme is set before first paint, from the saved choice
+     * or the device setting, so pages never flash the wrong colours.
+     */
+    protected function registerAdminSkin(): void
+    {
+        Template::registerHook('startHead', fn () => '<script>(function(){var t=null;try{t=localStorage.getItem("vp-theme")}catch(e){}'
+            .'if(t!=="light"&&t!=="dark"){t=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}'
+            .'document.documentElement.setAttribute("data-bs-theme",t)})();</script>');
+
+        Template::registerHook('endStyles', fn () => '<link rel="preconnect" href="https://fonts.googleapis.com">'
+            .'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            .'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">'
+            .'<link rel="stylesheet" href="'.e(asset('voxpilot/admin/vp-admin.css')).'?v='.self::assetVersion('vp-admin.css').'">');
+
+        Template::registerHook('endScripts', fn () => '<script src="'.e(asset('voxpilot/admin/vp-admin.js')).'?v='.self::assetVersion('vp-admin.js').'"></script>');
+    }
+
+    /** Cache-buster for public/voxpilot/admin files: their modification time. */
+    protected static function assetVersion(string $file): string
+    {
+        return (string) (@filemtime(public_path('voxpilot/admin/'.$file)) ?: '1');
     }
 
     protected function registerAdminMiddleware(): void

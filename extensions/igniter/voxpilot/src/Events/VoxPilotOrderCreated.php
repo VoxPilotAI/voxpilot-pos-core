@@ -57,6 +57,7 @@ class VoxPilotOrderCreated implements ShouldBroadcast
             'items' => $menus->map(fn($menu) => [
                 'name' => $menu->name,
                 'quantity' => $menu->quantity,
+                'subtotal' => (float) $menu->subtotal,
                 'notes' => $menu->comment ?: null,
             ])->values()->toArray(),
             'order_total' => (float) $order->order_total,

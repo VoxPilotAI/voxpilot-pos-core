@@ -1,0 +1,1 @@
+<span class="vp-pill vp-pill-status" id="vp-ticket-status-{{ $order->order_id }}" style="--vp-status: {{ $order->status?->status_color ?: '#8a96b4' }}">{{ \Igniter\VoxPilot\Http\Controllers\Concerns\OrderQuickActions::statusLabel($order->status?->status_name) }}</span>
