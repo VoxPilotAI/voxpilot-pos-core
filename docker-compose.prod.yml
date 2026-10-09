@@ -2,7 +2,7 @@
 # Coolify deploys this file. Domain: pos.voxpilothq.io
 # Coolify handles TLS termination and reverse proxy.
 #
-# WebSocket proxy: Coolify must route /app/* and /apps/* to port 6001.
+# WebSocket proxy: /app/* and /apps/* go to Reverb (6001) through the Traefik labels on `pos`.
 # See DEPLOYMENT_COOLIFY.md for proxy configuration.
 
 services:
@@ -66,9 +66,21 @@ services:
     volumes:
       - pos_storage:/var/www/html/storage
       - pos_bootstrap_cache:/var/www/html/bootstrap/cache
-    ports:
-      - "80:80"
-      - "6001:6001"
+    # Coolify's proxy (Traefik) owns the host's 80/443: publish nothing, route by domain.
+    # Domain in Coolify: https://pos.voxpilothq.io:80 (web). Reverb (Pusher protocol, /app/* and
+    # /apps/*) goes to 6001 through the labels below.
+    expose:
+      - "80"
+      - "6001"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pos-reverb.rule=Host(`${POS_HOST:-pos.voxpilothq.io}`) && (PathPrefix(`/app/`) || PathPrefix(`/apps/`))
+      - traefik.http.routers.pos-reverb.entrypoints=https
+      - traefik.http.routers.pos-reverb.tls=true
+      - traefik.http.routers.pos-reverb.tls.certresolver=letsencrypt
+      - traefik.http.routers.pos-reverb.priority=1000
+      - traefik.http.routers.pos-reverb.service=pos-reverb
+      - traefik.http.services.pos-reverb.loadbalancer.server.port=6001
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
