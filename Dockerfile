@@ -28,9 +28,12 @@ FROM base AS build
 
 WORKDIR /var/www/html
 COPY composer.json composer.lock* ./
-RUN composer install --no-interaction --prefer-dist --no-progress --no-dev --optimize-autoloader
+# Scripts and the autoloader need the app (artisan): install the packages first (cached layer),
+# then dump the autoloader once the code is copied.
+RUN composer install --no-interaction --prefer-dist --no-progress --no-dev --no-scripts --no-autoloader
 
 COPY . .
+RUN composer dump-autoload --optimize --no-dev
 
 # ---------- Production image ----------
 FROM base AS production

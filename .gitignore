@@ -6,9 +6,8 @@
 phpunit.dusk.xml
 auth.json
 
-# Ignore all vendor files included by composer and the lock file
+# Ignore vendor files installed by composer (composer.lock is versioned: reproducible builds)
 /vendor
-composer.lock
 node_modules
 
 /public/vendor

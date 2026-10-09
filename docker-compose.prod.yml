@@ -13,8 +13,6 @@ services:
     container_name: voxpilot-pos
     restart: unless-stopped
     depends_on:
-      pos-db:
-        condition: service_healthy
       pos-redis:
         condition: service_healthy
     environment:
@@ -25,8 +23,9 @@ services:
       APP_KEY: ${APP_KEY}
       IGNITER_LOCATION_MODE: ${IGNITER_LOCATION_MODE:-multiple}
       DB_CONNECTION: mysql
-      DB_HOST: pos-db
-      DB_PORT: "3306"
+      # External MySQL 8.4 on the database server (not on the apps server).
+      DB_HOST: ${DB_HOST:?set DB_HOST to the database server}
+      DB_PORT: ${DB_PORT:-3306}
       DB_DATABASE: ${DB_DATABASE:-voxpilot_pos}
       DB_USERNAME: ${DB_USERNAME:-voxpilot_pos}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -87,23 +86,6 @@ services:
       timeout: 5s
       retries: 3
 
-  pos-db:
-    image: mysql:8.4
-    container_name: voxpilot-pos-db
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-voxpilot_pos}
-      MYSQL_USER: ${DB_USERNAME:-voxpilot_pos}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-${DB_PASSWORD}}
-    volumes:
-      - pos_db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-${DB_PASSWORD}}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   pos-redis:
     image: redis:7-alpine
     container_name: voxpilot-pos-redis
@@ -117,7 +99,6 @@ services:
       retries: 3
 
 volumes:
-  pos_db_data:
   pos_redis_data:
   pos_storage:
   pos_bootstrap_cache:
