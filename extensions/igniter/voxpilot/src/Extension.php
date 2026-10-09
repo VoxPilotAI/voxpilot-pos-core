@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot;
 
 use Igniter\Admin\Facades\Template;
+use Igniter\Admin\Http\Controllers\Dashboard;
 use Igniter\Cart\Models\Order;
 use Igniter\Local\Models\Location;
 use Igniter\System\Helpers\MailHelper;
 use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\ApplyBranding;
+use Igniter\VoxPilot\DashboardWidgets;
 use Igniter\VoxPilot\Console\BootstrapTenant;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantForAdmin;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
@@ -31,7 +33,7 @@ use Override;
 class Extension extends BaseExtension
 {
     /** Cache-buster for the admin skin assets; bump when public/voxpilot/admin changes. */
-    private const SKIN_VERSION = '1';
+    private const SKIN_VERSION = '2';
 
     #[Override]
     public function register(): void
@@ -57,6 +59,35 @@ class Extension extends BaseExtension
         $this->registerOAuthRoutes();
         $this->registerChannels();
         $this->registerOrderStatusListener();
+    }
+
+    #[Override]
+    public function registerDashboardWidgets(): array
+    {
+        return [
+            DashboardWidgets\Overview::class => ['code' => 'vp_overview', 'label' => 'igniter.voxpilot::dashboard.widget_overview'],
+            DashboardWidgets\OrdersByHour::class => ['code' => 'vp_orders_by_hour', 'label' => 'igniter.voxpilot::dashboard.widget_orders_by_hour'],
+            DashboardWidgets\Assistant::class => ['code' => 'vp_assistant', 'label' => 'igniter.voxpilot::dashboard.widget_assistant'],
+            DashboardWidgets\RecentOrders::class => ['code' => 'vp_recent_orders', 'label' => 'igniter.voxpilot::dashboard.widget_recent_orders'],
+            DashboardWidgets\TopItems::class => ['code' => 'vp_top_items', 'label' => 'igniter.voxpilot::dashboard.widget_top_items'],
+        ];
+    }
+
+    /**
+     * The VoxPilot dashboard replaces TastyIgniter's default one (onboarding checklist, TastyIgniter
+     * news, generic stats). Users who saved their own layout keep it until they reset it.
+     */
+    protected function registerDefaultDashboard(): void
+    {
+        Dashboard::extend(function (Dashboard $controller): void {
+            $controller->containerConfig['defaultWidgets'] = [
+                'vp_overview' => ['widget' => 'vp_overview', 'priority' => 10, 'width' => '12'],
+                'vp_orders_by_hour' => ['widget' => 'vp_orders_by_hour', 'priority' => 20, 'width' => '8'],
+                'vp_assistant' => ['widget' => 'vp_assistant', 'priority' => 30, 'width' => '4'],
+                'vp_recent_orders' => ['widget' => 'vp_recent_orders', 'priority' => 40, 'width' => '8'],
+                'vp_top_items' => ['widget' => 'vp_top_items', 'priority' => 50, 'width' => '4'],
+            ];
+        });
     }
 
     #[Override]
@@ -124,6 +155,7 @@ class Extension extends BaseExtension
         $this->app['router']->pushMiddlewareToGroup('igniter', StorefrontLanding::class);
 
         $this->registerAdminSkin();
+        $this->registerDefaultDashboard();
     }
 
     /**

@@ -294,3 +294,70 @@ html[data-bs-theme=dark] ::-webkit-scrollbar-track { background: transparent; }
 @media (prefers-reduced-motion: reduce) {
     html[data-bs-theme] * { transition: none !important; animation: none !important; }
 }
+
+/* VoxPilot dashboard widgets (extensions/igniter/voxpilot/resources/views/_partials/dashboardwidgets) */
+html[data-bs-theme] .widget-item.card:has(.vp-kpis) { background: transparent !important; border: 0; box-shadow: none !important; padding: 0 !important; }
+.vp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.vp-kpi { background: var(--vp-panel); border: 1px solid var(--vp-border); border-radius: 18px; box-shadow: var(--vp-shadow); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.vp-kpi-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.vp-kpi-label { font-size: 13px; font-weight: 500; color: var(--vp-muted); }
+.vp-kpi-value { font-family: "Space Grotesk", Inter, sans-serif; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: var(--vp-fg); }
+.vp-spark { display: flex; align-items: flex-end; gap: 4px; height: 34px; }
+.vp-spark span { flex: 1; border-radius: 3px; min-height: 3px; opacity: 0.85; }
+.vp-spark-primary span { background: var(--vp-primary); }
+.vp-spark-accent span { background: var(--vp-accent); }
+
+.vp-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; line-height: 1.4; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.vp-pill-primary { color: var(--vp-primary); background: var(--vp-primary-soft); }
+.vp-pill-success { color: var(--vp-success); background: var(--vp-success-soft); }
+.vp-pill-danger { color: var(--vp-danger); background: var(--vp-danger-soft); }
+.vp-pill-muted { color: var(--vp-muted); background: var(--vp-track); }
+.vp-pill-status { color: var(--vp-status); background: color-mix(in srgb, var(--vp-status) 14%, transparent); }
+.vp-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.vp-bg-primary { background: var(--vp-primary); }
+.vp-bg-accent { background: var(--vp-accent); }
+.vp-bg-success { background: var(--vp-success); }
+.vp-text-success { color: var(--vp-success) !important; }
+.vp-text-danger { color: var(--vp-danger) !important; }
+
+.vp-widget { display: flex; flex-direction: column; gap: 16px; height: 100%; color: var(--vp-fg); }
+.vp-widget-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.vp-widget-title { margin: 0; font-family: "Space Grotesk", Inter, sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.vp-widget-sub { margin: 4px 0 0; font-size: 13px; color: var(--vp-muted); }
+.vp-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--vp-muted); }
+.vp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.vp-legend .vp-dot { border-radius: 3px; width: 10px; height: 10px; }
+.vp-link { font-size: 13px; font-weight: 600; text-decoration: none; color: var(--vp-primary); }
+.vp-empty { margin: 0; padding: 28px 0; text-align: center; color: var(--vp-muted); font-size: 14px; }
+
+.vp-hours { display: flex; align-items: stretch; gap: 8px; height: 230px; }
+.vp-hour { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.vp-hour-bars { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 3px; border-bottom: 1px solid var(--vp-border); padding-bottom: 2px; }
+.vp-hour-bars span { display: block; width: 100%; max-width: 34px; margin: 0 auto; border-radius: 6px; }
+.vp-hour-bars span[style*="height: 0%"] { display: none; }
+.vp-hour-label { text-align: center; font-size: 11px; color: var(--vp-muted); }
+
+.vp-assistant { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.vp-ring { --vp-ring: 0%; width: 120px; height: 120px; flex: none; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--vp-primary) 0 var(--vp-ring), var(--vp-track) var(--vp-ring) 100%); }
+.vp-ring > div { width: 92px; height: 92px; border-radius: 50%; background: var(--vp-panel); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.vp-ring strong { font-family: "Space Grotesk", Inter, sans-serif; font-size: 24px; line-height: 1; }
+.vp-ring span { font-size: 11px; color: var(--vp-muted); max-width: 70px; line-height: 1.2; margin-top: 4px; }
+.vp-stat-list { flex: 1; min-width: 160px; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.vp-stat-list > div { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.vp-stat-list dt { font-weight: 400; color: var(--vp-muted); }
+.vp-stat-list dd { margin: 0; font-weight: 700; }
+.vp-insight { padding: 12px 14px; border-radius: 12px; background: var(--vp-accent-soft); color: var(--vp-accent); font-size: 13px; line-height: 1.5; }
+
+.vp-table { width: 100%; border-collapse: collapse; font-size: 14px; color: var(--vp-fg); }
+.vp-table th { padding: 8px 8px 8px 0; font-size: 12px; font-weight: 500; color: var(--vp-muted); text-align: left; }
+.vp-table td { padding: 12px 8px 12px 0; border-top: 1px solid var(--vp-border); vertical-align: middle; }
+.vp-strong { font-weight: 600; color: var(--vp-fg); text-decoration: none; }
+.vp-sub { display: block; font-size: 12px; color: var(--vp-muted); }
+.vp-truncate { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.vp-bar-row { display: flex; flex-direction: column; gap: 8px; }
+.vp-bar-label { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.vp-bar-label span:first-child { font-weight: 500; }
+.vp-bar-label span:last-child { color: var(--vp-muted); white-space: nowrap; }
+.vp-bar-track { height: 8px; border-radius: 999px; background: var(--vp-track); overflow: hidden; }
+.vp-bar-track span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--vp-primary), var(--vp-accent)); }

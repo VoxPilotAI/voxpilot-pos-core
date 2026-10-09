@@ -12,6 +12,10 @@ return [
     ),
     // This POS has no diners: the storefront home becomes the VoxPilot POS landing page and the
     // customer login/register pages send people to the admin sign-in.
+    // VoxPilot API base for server-side reads (POS dashboard). Empty: the tenant's
+    // webhook_callback_url from provisioning (the public API URL). Set it when the POS reaches
+    // VoxPilot through an internal address (local Docker: http://backend:3000).
+    'api_url' => env('VOXPILOT_API_URL'),
     'storefront_landing' => env('VOXPILOT_STOREFRONT_LANDING', true),
     // Languages with VoxPilot copy (landing page and owner emails); anything else falls back to English.
     'locales' => ['en', 'es', 'de', 'fr', 'it', 'pt', 'nl'],
