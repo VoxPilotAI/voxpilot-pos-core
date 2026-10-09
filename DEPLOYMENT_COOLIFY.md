@@ -113,6 +113,10 @@ DB_PASSWORD=<strong-random-password>
 REVERB_APP_ID=<generate: php -r "echo bin2hex(random_bytes(8));">
 REVERB_APP_KEY=<generate: php -r "echo bin2hex(random_bytes(32));">
 REVERB_APP_SECRET=<generate: php -r "echo bin2hex(random_bytes(32));">
+
+# VoxPilot (SPEC-011): same values as the VoxPilot backend's POS_PROVISIONING_SECRET / POS_HMAC_SECRET
+VOXPILOT_PROVISIONING_SECRET=<generate: php -r "echo bin2hex(random_bytes(32));">
+VOXPILOT_HMAC_SECRET=<generate: php -r "echo bin2hex(random_bytes(32));">
 ```
 
 ### Required — Fixed values
@@ -143,10 +147,23 @@ REVERB_SERVER_HOST=0.0.0.0
 REVERB_SERVER_PORT=6001
 REVERB_SERVER_SCHEME=http
 
-IGNITER_LOCATION_MODE=single
+# One location per VoxPilot restaurant: in `single` mode every admin is pinned to the default
+# location and restaurant owners see no orders.
+IGNITER_LOCATION_MODE=multiple
+
+QUEUE_CONNECTION=database
+
+# Where "Connect with VoxPilot" redirects (the VoxPilot app of this environment)
+VOXPILOT_APP_INSTALL_URL=https://app.voxpilothq.io/integrations/pos/install
 ```
 
-### Optional
+For a DEV POS, also set `APP_URL`, `REVERB_HOST` and `VOXPILOT_APP_INSTALL_URL` to the DEV domains (e.g. `https://app-dev.voxpilothq.io/integrations/pos/install`).
+
+### Mail (required for the VoxPilot owner invite)
+
+Provisioning e-mails each new restaurant owner a set-password link. With `MAIL_MAILER=log` (the default) nothing is sent and owners cannot sign in. `VOXPILOT_SEND_OWNER_INVITE=false` turns the invite off.
+
+Set the store / site name in *Settings* to something neutral (e.g. "VoxPilot POS"): the invite subject uses it.
 
 ```env
 MAIL_MAILER=smtp

@@ -27,6 +27,7 @@ class ProvisioningController extends Controller
             'location_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'webhook_callback_url' => 'nullable|url:http,https|max:2048',
+            'send_owner_invite' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {

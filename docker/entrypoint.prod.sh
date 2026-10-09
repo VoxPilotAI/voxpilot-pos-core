@@ -13,8 +13,10 @@ done
 # First deploy: install TastyIgniter schema + seed admin. Subsequent: no-op.
 php artisan igniter:install --no-interaction || echo "[pos] igniter:install exited $? (already installed?)"
 
-# Run pending migrations
+# Run pending migrations. `migrate` only sees the app's own migrations; the TastyIgniter core and
+# extension migrations (VoxPilot SPEC-011: voxpilot_auth_codes, voxpilot_installations) need igniter:up.
 php artisan migrate --force --no-interaction
+php artisan igniter:up --force --no-interaction
 
 # Ensure writable dirs
 mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
