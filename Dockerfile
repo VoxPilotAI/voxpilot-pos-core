@@ -9,6 +9,9 @@ RUN apt-get update \
       libicu-dev libonig-dev supervisor \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
  && docker-php-ext-install -j"$(nproc)" pdo_mysql mysqli gd intl zip bcmath exif opcache pcntl \
+ && apt-get install -y --no-install-recommends $PHPIZE_DEPS \
+ && pecl install redis \
+ && docker-php-ext-enable redis \
  && a2enmod rewrite headers \
  && rm -rf /var/lib/apt/lists/*
 
