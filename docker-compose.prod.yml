@@ -73,7 +73,9 @@ services:
       - "6001"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pos-reverb.rule=Host(`${POS_HOST:-pos.voxpilothq.io}`) && (PathPrefix(`/app/`) || PathPrefix(`/apps/`))
+      # Literal host: Coolify escapes `$` in labels, so a ${POS_HOST} variable ends up in the rule as
+      # text and the router never matches (websocket /app/* then falls through to Apache, 404).
+      - traefik.http.routers.pos-reverb.rule=Host(`pos.voxpilothq.io`) && (PathPrefix(`/app/`) || PathPrefix(`/apps/`))
       - traefik.http.routers.pos-reverb.entrypoints=https
       - traefik.http.routers.pos-reverb.tls=true
       - traefik.http.routers.pos-reverb.tls.certresolver=letsencrypt
