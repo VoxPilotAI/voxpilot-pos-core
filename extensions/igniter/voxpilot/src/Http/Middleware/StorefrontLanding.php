@@ -17,6 +17,9 @@ class StorefrontLanding
 {
     private const LANDING_ROUTES = ['igniter.theme.home'];
 
+    /** Signed-out admin screens: shown in the browser's language (TastyIgniter uses the default). */
+    private const ADMIN_AUTH_ROUTES = ['igniter.admin.login', 'igniter.admin.reset'];
+
     private const ADMIN_LOGIN_ROUTES = [
         'igniter.theme.account.login',
         'igniter.theme.account.register',
@@ -24,11 +27,15 @@ class StorefrontLanding
 
     public function handle(Request $request, Closure $next): mixed
     {
+        $routeName = $request->route()?->getName();
+
+        if (in_array($routeName, self::ADMIN_AUTH_ROUTES, true) && !app('admin.auth')->isLogged()) {
+            app()->setLocale(Locale::normalize($request->getPreferredLanguage(Locale::supported())));
+        }
+
         if (!config('voxpilot.storefront_landing', true) || !$request->isMethod('GET')) {
             return $next($request);
         }
-
-        $routeName = $request->route()?->getName();
 
         if (in_array($routeName, self::ADMIN_LOGIN_ROUTES, true)) {
             return redirect()->to(admin_url('login'));
