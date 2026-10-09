@@ -1,310 +1,206 @@
-<div class="container-fluid py-3">
+<div class="vp-page vp-live">
     @if(!$tenant)
-        <div class="alert alert-warning">
-            No tenant configured. Run: <code>php artisan voxpilot:bootstrap-tenant</code>
-        </div>
+        <div class="alert alert-warning">@lang('igniter.voxpilot::live.no_tenant')</div>
     @else
-        {{-- Toast container --}}
-        <div id="vp-toast-container" style="position:fixed;top:20px;right:20px;z-index:9999;max-width:400px;"></div>
-
-        {{-- Header --}}
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">
-                <i class="fa fa-headset me-2"></i>VoxPilot Incoming Orders
-            </h4>
-            <div class="d-flex align-items-center gap-3">
-                <select id="vp-location-filter" class="form-select form-select-sm" style="width:auto;">
-                    <option value="">All Locations</option>
-                    @foreach($locations as $loc)
-                        <option value="{{ $loc->location_id }}">{{ $loc->location_name }}</option>
-                    @endforeach
-                </select>
-                <div id="vp-connection-status" class="badge bg-secondary">
-                    <i class="fa fa-circle me-1"></i>Initializing…
-                </div>
-                <label class="form-check form-switch mb-0" title="Sound notification">
-                    <input type="checkbox" class="form-check-input" id="vp-sound-toggle" checked>
-                    <span class="form-check-label"><i class="fa fa-volume-up"></i></span>
+        <div class="vp-page-head">
+            <div>
+                <h1 class="vp-page-title">@lang('igniter.voxpilot::board.nav_live')</h1>
+                <p class="vp-page-sub">@lang('igniter.voxpilot::live.subtitle')</p>
+            </div>
+            <div class="vp-page-actions">
+                @if($locations->count() > 1)
+                    <select id="vp-location-filter" class="form-select" style="width: auto" aria-label="@lang('igniter.voxpilot::live.location')">
+                        <option value="">@lang('igniter.voxpilot::live.all_locations')</option>
+                        @foreach($locations as $loc)
+                            <option value="{{ $loc->location_id }}">{{ $loc->location_name }}</option>
+                        @endforeach
+                    </select>
+                @endif
+                <span id="vp-connection-status" class="vp-pill vp-pill-muted vp-live-status"><i class="vp-dot vp-bg-accent"></i>@lang('igniter.voxpilot::live.connecting')</span>
+                <span class="vp-live-clock" id="vp-live-clock" aria-live="off"></span>
+                <label class="vp-sound" title="@lang('igniter.voxpilot::live.sound')">
+                    <input type="checkbox" id="vp-sound-toggle" checked>
+                    <i class="fa fa-volume-high" aria-hidden="true"></i>
+                    <span class="visually-hidden">@lang('igniter.voxpilot::live.sound')</span>
                 </label>
             </div>
         </div>
 
-        {{-- Orders table --}}
-        <div class="card">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="vp-orders-table">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width:50px;"></th>
-                            <th>Order</th>
-                            <th>Customer</th>
-                            <th>Items</th>
-                            <th>Total</th>
-                            <th>Source</th>
-                            <th>Location</th>
-                            <th>Time</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="vp-orders-body">
-                        @foreach($recentOrders as $meta)
-                            @if($meta->order)
-                                <tr data-order-id="{{ $meta->order->order_id }}" data-location-id="{{ $meta->location_id }}">
-                                    <td>
-                                        @if($meta->order->order_type === 'delivery')
-                                            <span class="badge bg-info" title="Delivery"><i class="fa fa-motorcycle"></i></span>
-                                        @else
-                                            <span class="badge bg-success" title="Pickup"><i class="fa fa-shopping-bag"></i></span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <strong>#{{ $meta->order->order_id }}</strong>
-                                        <br><small class="text-muted">{{ $meta->external_order_id }}</small>
-                                    </td>
-                                    <td>
-                                        {{ trim($meta->order->first_name . ' ' . $meta->order->last_name) }}
-                                        @if($meta->order->telephone)
-                                            <br><small class="text-muted">{{ $meta->order->telephone }}</small>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @foreach($meta->order->menus ?? [] as $menu)
-                                            <div>{{ $menu->quantity }}× {{ $menu->name }}</div>
-                                        @endforeach
-                                    </td>
-                                    <td><strong>{{ number_format($meta->order->order_total, 2) }}</strong></td>
-                                    <td>
-                                        <span class="badge bg-{{ $meta->source === 'voice' ? 'primary' : 'secondary' }}">
-                                            {{ ucfirst($meta->source) }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $meta->order->location?->location_name ?? '—' }}</td>
-                                    <td>
-                                        <span title="{{ $meta->created_at }}">
-                                            {{ $meta->created_at?->diffForHumans() }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <a href="{{ admin_url('orders/edit/' . $meta->order->order_id) }}"
-                                           class="btn btn-sm btn-outline-primary" title="View Order">
-                                            <i class="fa fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                            @endif
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="card-footer text-muted text-center" id="vp-empty-state"
-                 style="{{ $recentOrders->count() ? 'display:none;' : '' }}">
-                <i class="fa fa-headset fa-2x mb-2 d-block"></i>
-                No VoxPilot orders yet. Waiting for incoming calls…
-            </div>
+        <div class="vp-live-grid" id="vp-orders-body">
+            @foreach($recentOrders as $meta)
+                @if($meta->order)
+                    <article class="vp-ticket" data-order-id="{{ $meta->order->order_id }}" data-location-id="{{ $meta->location_id }}">
+                        <div class="vp-ticket-head">
+                            <div>
+                                <a class="vp-ticket-id" href="{{ admin_url('orders/edit/'.$meta->order->order_id) }}">#{{ $meta->order->order_id }}</a>
+                                <div class="vp-ticket-customer">{{ trim($meta->order->first_name.' '.$meta->order->last_name) }}@if($meta->order->telephone) · {{ $meta->order->telephone }}@endif</div>
+                            </div>
+                            <span class="vp-pill {{ $meta->order->order_type === 'delivery' ? 'vp-pill-primary' : 'vp-pill-success' }}">
+                                <i class="fa {{ $meta->order->order_type === 'delivery' ? 'fa-motorcycle' : 'fa-bag-shopping' }}"></i>
+                                {{ $meta->order->order_type === 'delivery' ? lang('igniter.voxpilot::live.delivery') : lang('igniter.voxpilot::live.pickup') }}
+                            </span>
+                        </div>
+                        <ul class="vp-ticket-lines">
+                            @foreach($meta->order->menus ?? [] as $menu)
+                                <li><span><strong>{{ $menu->quantity }}×</strong> {{ $menu->name }}</span><span>{{ currency_format($menu->subtotal) }}</span></li>
+                            @endforeach
+                        </ul>
+                        <div class="vp-ticket-foot">
+                            <span class="vp-ticket-time" title="{{ $meta->created_at }}"><i class="fa fa-phone"></i> {{ $meta->created_at?->diffForHumans() }}</span>
+                            <strong>{{ currency_format($meta->order->order_total) }}</strong>
+                        </div>
+                    </article>
+                @endif
+            @endforeach
+        </div>
+
+        <div class="vp-live-empty" id="vp-empty-state" @if($recentOrders->count()) hidden @endif>
+            <div class="vp-live-wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <p>@lang('igniter.voxpilot::live.empty')</p>
         </div>
     @endif
 </div>
 
+@if($tenant)
+<script>
+(function () {
+    var clock = document.getElementById('vp-live-clock');
+    function tick() { if (clock) clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    tick(); setInterval(tick, 15000);
+})();
+</script>
+@endif
+
 @if($tenant && $reverbConfig)
-{{-- Load Pusher + Echo from CDN (Reverb uses Pusher protocol) --}}
+{{-- Reverb speaks the Pusher protocol --}}
 <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0/dist/web/pusher.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.17.1/dist/echo.iife.js"></script>
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     var tenantId = @json($tenantId);
     var locations = @json($locations->pluck('location_id'));
     var reverbConfig = @json($reverbConfig);
+    var t = @json(trans('igniter.voxpilot::live'));
     var statusEl = document.getElementById('vp-connection-status');
-    var tbody = document.getElementById('vp-orders-body');
+    var grid = document.getElementById('vp-orders-body');
     var emptyState = document.getElementById('vp-empty-state');
     var locationFilter = document.getElementById('vp-location-filter');
     var soundToggle = document.getElementById('vp-sound-toggle');
+    var money = new Intl.NumberFormat(document.documentElement.lang || undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // ── Audio ──
+    function setStatus(tone, text) {
+        statusEl.className = 'vp-pill vp-live-status vp-pill-' + tone;
+        statusEl.innerHTML = '';
+        var dot = document.createElement('i');
+        dot.className = 'vp-dot vp-bg-' + (tone === 'success' ? 'success' : tone === 'danger' ? 'danger' : 'accent');
+        statusEl.appendChild(dot);
+        statusEl.appendChild(document.createTextNode(text));
+    }
+
     var audioCtx = null;
-    function playNotificationSound() {
-        if (!soundToggle.checked) return;
+    function chime() {
+        if (!soundToggle || !soundToggle.checked) return;
         try {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            var osc = audioCtx.createOscillator();
-            var gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 880;
-            osc.type = 'sine';
-            gain.gain.value = 0.3;
-            osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-            osc.stop(audioCtx.currentTime + 0.5);
-        } catch(e) { console.warn('Sound failed:', e); }
+            audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+            [880, 1175].forEach(function (freq, i) {
+                var osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.frequency.value = freq; osc.type = 'sine';
+                var start = audioCtx.currentTime + i * 0.18;
+                gain.gain.setValueAtTime(0.25, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+                osc.start(start); osc.stop(start + 0.4);
+            });
+        } catch (e) { /* audio blocked until the first click */ }
     }
 
-    // ── Toast ──
-    function showToast(data) {
-        var container = document.getElementById('vp-toast-container');
-        var toast = document.createElement('div');
-        toast.className = 'alert alert-success alert-dismissible fade show shadow';
-        toast.innerHTML = '<strong><i class="fa fa-bell me-1"></i> New Order #' + data.order_id + '</strong>' +
-            '<br>' + data.customer.name +
-            (data.customer.phone ? ' · ' + data.customer.phone : '') +
-            '<br><small>' + data.items.length + ' item(s) · ' + parseFloat(data.order_total).toFixed(2) + '</small>' +
-            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-        container.prepend(toast);
-        setTimeout(function() { toast.remove(); }, 8000);
+    function el(tag, className, text) {
+        var node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = text;
+        return node;
     }
 
-    // ── Add order row ──
-    function addOrderRow(data, animate) {
-        if (emptyState) emptyState.style.display = 'none';
+    // Built with textContent only: customer names and items come from phone calls.
+    function addTicket(data) {
+        if (emptyState) emptyState.hidden = true;
+        var delivery = data.fulfillment_type === 'delivery';
+        var card = el('article', 'vp-ticket vp-ticket-new');
+        card.setAttribute('data-order-id', data.order_id);
+        card.setAttribute('data-location-id', data.location_id || '');
 
-        var typeIcon = data.fulfillment_type === 'delivery'
-            ? '<span class="badge bg-info" title="Delivery"><i class="fa fa-motorcycle"></i></span>'
-            : '<span class="badge bg-success" title="Pickup"><i class="fa fa-shopping-bag"></i></span>';
+        var head = el('div', 'vp-ticket-head');
+        var who = el('div');
+        var link = el('a', 'vp-ticket-id', '#' + data.order_id);
+        link.href = window.location.origin + '/admin/orders/edit/' + encodeURIComponent(data.order_id);
+        who.appendChild(link);
+        var customer = data.customer ? data.customer.name + (data.customer.phone ? ' · ' + data.customer.phone : '') : '';
+        who.appendChild(el('div', 'vp-ticket-customer', customer));
+        head.appendChild(who);
+        head.appendChild(el('span', 'vp-pill ' + (delivery ? 'vp-pill-primary' : 'vp-pill-success'), delivery ? t.delivery : t.pickup));
+        card.appendChild(head);
 
-        var itemsHtml = (data.items || []).map(function(i) {
-            return '<div>' + i.quantity + '× ' + i.name + '</div>';
-        }).join('');
+        var lines = el('ul', 'vp-ticket-lines');
+        (data.items || []).forEach(function (item) {
+            var li = el('li');
+            var name = el('span');
+            name.appendChild(el('strong', null, item.quantity + '× '));
+            name.appendChild(document.createTextNode(item.name));
+            li.appendChild(name);
+            li.appendChild(el('span', null, item.subtotal != null ? money.format(item.subtotal) : ''));
+            lines.appendChild(li);
+        });
+        card.appendChild(lines);
 
-        var sourceBadge = data.source === 'voice' ? 'primary' : 'secondary';
-        var locationName = data.location_name || '—';
-        var locationId = data.location_id || '';
+        var foot = el('div', 'vp-ticket-foot');
+        foot.appendChild(el('span', 'vp-ticket-time', t.just_now));
+        foot.appendChild(el('strong', null, money.format(parseFloat(data.order_total) || 0)));
+        card.appendChild(foot);
 
-        var tr = document.createElement('tr');
-        tr.setAttribute('data-order-id', data.order_id);
-        tr.setAttribute('data-location-id', locationId);
-        if (animate) tr.style.backgroundColor = '#d4edda';
-
-        tr.innerHTML = '<td>' + typeIcon + '</td>' +
-            '<td><strong>#' + data.order_id + '</strong><br><small class="text-muted">' + (data.external_order_id || '') + '</small></td>' +
-            '<td>' + (data.customer ? data.customer.name : '') +
-                (data.customer && data.customer.phone ? '<br><small class="text-muted">' + data.customer.phone + '</small>' : '') + '</td>' +
-            '<td>' + itemsHtml + '</td>' +
-            '<td><strong>' + parseFloat(data.order_total).toFixed(2) + '</strong></td>' +
-            '<td><span class="badge bg-' + sourceBadge + '">' + (data.source ? data.source.charAt(0).toUpperCase() + data.source.slice(1) : 'Voice') + '</span></td>' +
-            '<td>' + locationName + '</td>' +
-            '<td><small>Just now</small></td>' +
-            '<td><a href="' + window.location.origin + '/admin/orders/edit/' + data.order_id + '" class="btn btn-sm btn-outline-primary" title="View Order"><i class="fa fa-eye"></i></a></td>';
-
-        tbody.prepend(tr);
-
-        if (animate) {
-            setTimeout(function() { tr.style.transition = 'background-color 2s'; tr.style.backgroundColor = ''; }, 100);
-        }
-
+        grid.prepend(card);
+        setTimeout(function () { card.classList.remove('vp-ticket-new'); }, 60000);
         applyLocationFilter();
     }
 
-    // ── Location filter ──
     function applyLocationFilter() {
-        var filterVal = locationFilter.value;
-        var rows = tbody.querySelectorAll('tr');
-        rows.forEach(function(row) {
-            if (!filterVal || row.getAttribute('data-location-id') === filterVal) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+        if (!locationFilter) return;
+        var value = locationFilter.value;
+        grid.querySelectorAll('[data-order-id]').forEach(function (card) {
+            card.hidden = !!value && card.getAttribute('data-location-id') !== value;
         });
     }
-    locationFilter.addEventListener('change', applyLocationFilter);
+    if (locationFilter) locationFilter.addEventListener('change', applyLocationFilter);
 
-    // ── Initialize Echo with Reverb (Pusher protocol) ──
-    if (typeof window.Echo === 'undefined' && typeof Echo !== 'undefined') {
-        window.Echo = null; // will be set below
-    }
-
-    if (!reverbConfig || !reverbConfig.key) {
-        statusEl.className = 'badge bg-danger';
-        statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Reverb not configured';
-        console.error('VoxPilot: Reverb config missing. Check REVERB_APP_KEY in .env');
-        return;
-    }
+    if (!reverbConfig || !reverbConfig.key) { setStatus('danger', t.not_configured); return; }
 
     var useTLS = reverbConfig.scheme === 'https';
-    var wsHost = reverbConfig.host || window.location.hostname;
     var wsPort = reverbConfig.port || (useTLS ? 443 : 80);
-
+    var echo;
     try {
-        var echo = new Echo({
-            broadcaster: 'pusher',
-            key: reverbConfig.key,
-            wsHost: wsHost,
-            wsPort: wsPort,
-            wssPort: wsPort,
-            forceTLS: useTLS,
-            encrypted: useTLS,
-            disableStats: true,
-            enabledTransports: ['ws', 'wss'],
-            cluster: 'mt1',
+        echo = new Echo({
+            broadcaster: 'pusher', key: reverbConfig.key,
+            wsHost: reverbConfig.host || window.location.hostname, wsPort: wsPort, wssPort: wsPort,
+            forceTLS: useTLS, encrypted: useTLS, disableStats: true, enabledTransports: ['ws', 'wss'], cluster: 'mt1',
             authEndpoint: reverbConfig.authEndpoint,
-            auth: {
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                }
-            }
+            auth: { headers: { 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' } }
         });
-    } catch(e) {
-        statusEl.className = 'badge bg-danger';
-        statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Echo init failed';
-        console.error('VoxPilot Echo init error:', e);
-        return;
-    }
+    } catch (e) { setStatus('danger', t.disconnected); return; }
 
-    // ── Connection state tracking ──
     if (echo.connector && echo.connector.pusher) {
-        var pusher = echo.connector.pusher;
-        pusher.connection.bind('connected', function() {
-            console.log('VoxPilot: WebSocket connected');
-        });
-        pusher.connection.bind('error', function(err) {
-            statusEl.className = 'badge bg-danger';
-            statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Disconnected';
-            console.error('VoxPilot: WebSocket error:', err);
-        });
-        pusher.connection.bind('disconnected', function() {
-            statusEl.className = 'badge bg-danger';
-            statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Disconnected';
-        });
-        pusher.connection.bind('unavailable', function() {
-            statusEl.className = 'badge bg-warning';
-            statusEl.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i>Reconnecting…';
-        });
+        var connection = echo.connector.pusher.connection;
+        connection.bind('connected', function () { setStatus('success', t.live); });
+        connection.bind('error', function () { setStatus('danger', t.disconnected); });
+        connection.bind('disconnected', function () { setStatus('danger', t.disconnected); });
+        connection.bind('unavailable', function () { setStatus('muted', t.reconnecting); });
     }
 
-    // ── Subscribe to tenant location channels ──
-    var subscribed = 0;
-    var subscriptionErrors = 0;
-
-    locations.forEach(function(locId) {
-        var channelName = 'tenant.' + tenantId + '.location.' + locId + '.orders';
-        console.log('VoxPilot: subscribing to private-' + channelName);
-
-        echo.private(channelName)
-            .listen('.voxpilot.order.created', function(data) {
-                console.log('VoxPilot: order received', data);
-                playNotificationSound();
-                showToast(data);
-                addOrderRow(data, true);
-            })
-            .error(function(err) {
-                subscriptionErrors++;
-                console.error('VoxPilot: channel auth error for', channelName, err);
-                if (subscriptionErrors >= locations.length) {
-                    statusEl.className = 'badge bg-danger';
-                    statusEl.innerHTML = '<i class="fa fa-times-circle me-1"></i>Auth failed';
-                }
-            });
-        subscribed++;
+    var failures = 0;
+    locations.forEach(function (locationId) {
+        echo.private('tenant.' + tenantId + '.location.' + locationId + '.orders')
+            .listen('.voxpilot.order.created', function (data) { chime(); addTicket(data); })
+            .error(function () { failures++; if (failures >= locations.length) setStatus('danger', t.auth_failed); });
     });
-
-    if (subscribed > 0) {
-        statusEl.className = 'badge bg-success';
-        statusEl.innerHTML = '<i class="fa fa-circle me-1"></i>Listening (' + subscribed + ')';
-    } else {
-        statusEl.className = 'badge bg-warning';
-        statusEl.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i>No locations';
-    }
+    if (!locations.length) setStatus('muted', t.no_locations);
 });
 </script>
 @endif

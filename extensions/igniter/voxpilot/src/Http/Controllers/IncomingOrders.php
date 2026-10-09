@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot\Http\Controllers;
 
 use Igniter\Admin\Classes\AdminController;
+use Igniter\Admin\Facades\Template;
 use Igniter\Local\Models\Location;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Services\TenantContext;
@@ -15,7 +16,7 @@ class IncomingOrders extends AdminController
 
     public function index()
     {
-        $this->pageTitle = 'Incoming Orders';
+        Template::setTitle($this->pageTitle = lang('igniter.voxpilot::board.nav_live'));
 
         $user = $this->getUser();
         $context = app(TenantContext::class);

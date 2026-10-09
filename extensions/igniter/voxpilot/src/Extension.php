@@ -32,9 +32,6 @@ use Override;
 
 class Extension extends BaseExtension
 {
-    /** Cache-buster for the admin skin assets; bump when public/voxpilot/admin changes. */
-    private const SKIN_VERSION = '2';
-
     #[Override]
     public function register(): void
     {
@@ -94,6 +91,22 @@ class Extension extends BaseExtension
     public function registerNavigation(): array
     {
         return [
+            'voxpilot-board' => [
+                'priority' => 5,
+                'class' => 'voxpilot-board',
+                'icon' => 'fa-table-columns',
+                'href' => admin_url('igniter/voxpilot/board'),
+                'title' => lang('igniter.voxpilot::board.nav'),
+                'permission' => 'Admin.Orders',
+            ],
+            'voxpilot-live' => [
+                'priority' => 6,
+                'class' => 'voxpilot-incoming-orders',
+                'icon' => 'fa-tower-broadcast',
+                'href' => admin_url('igniter/voxpilot/incoming_orders'),
+                'title' => lang('igniter.voxpilot::board.nav_live'),
+                'permission' => 'Igniter.VoxPilot.Manage',
+            ],
             'tools' => [
                 'child' => [
                     'voxpilot' => [
@@ -101,13 +114,6 @@ class Extension extends BaseExtension
                         'class' => 'voxpilot-integrations',
                         'href' => admin_url('igniter/voxpilot/integrations'),
                         'title' => 'VoxPilot',
-                        'permission' => 'Igniter.VoxPilot.Manage',
-                    ],
-                    'voxpilot-incoming' => [
-                        'priority' => 49,
-                        'class' => 'voxpilot-incoming-orders',
-                        'href' => admin_url('igniter/voxpilot/incoming_orders'),
-                        'title' => 'Incoming Orders',
                         'permission' => 'Igniter.VoxPilot.Manage',
                     ],
                 ],
@@ -172,9 +178,15 @@ class Extension extends BaseExtension
         Template::registerHook('endStyles', fn () => '<link rel="preconnect" href="https://fonts.googleapis.com">'
             .'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
             .'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">'
-            .'<link rel="stylesheet" href="'.e(asset('voxpilot/admin/vp-admin.css')).'?v='.self::SKIN_VERSION.'">');
+            .'<link rel="stylesheet" href="'.e(asset('voxpilot/admin/vp-admin.css')).'?v='.self::assetVersion('vp-admin.css').'">');
 
-        Template::registerHook('endScripts', fn () => '<script src="'.e(asset('voxpilot/admin/vp-admin.js')).'?v='.self::SKIN_VERSION.'"></script>');
+        Template::registerHook('endScripts', fn () => '<script src="'.e(asset('voxpilot/admin/vp-admin.js')).'?v='.self::assetVersion('vp-admin.js').'"></script>');
+    }
+
+    /** Cache-buster for public/voxpilot/admin files: their modification time. */
+    protected static function assetVersion(string $file): string
+    {
+        return (string) (@filemtime(public_path('voxpilot/admin/'.$file)) ?: '1');
     }
 
     protected function registerAdminMiddleware(): void
