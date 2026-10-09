@@ -7,6 +7,7 @@ namespace Igniter\VoxPilot\Services;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Igniter\Cart\Models\Order;
+use Igniter\VoxPilot\Support\StatusLabel;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -130,7 +131,7 @@ class DashboardStats
             'time' => $order->created_at?->format('d M H:i') ?? '',
             'items' => $order->menus->map(fn ($m) => $m->quantity.'× '.$m->name)->implode(', '),
             'phone' => in_array($order->order_id, $phoneIds),
-            'status' => (string) ($order->status?->status_name ?? '—'),
+            'status' => $order->status ? StatusLabel::for($order->status->status_name) : '—',
             'color' => (string) ($order->status?->status_color ?? '#8a96b4'),
             'total' => (float) $order->order_total,
             'type' => (string) $order->order_type,
@@ -166,6 +167,60 @@ class DashboardStats
     public function phoneOrders(): int
     {
         return $this->orders()->filter(fn ($o) => $this->isPhone($o))->count();
+    }
+
+    /**
+     * Close of the day for the range's last day: totals by payment (unpaid apart), by order type,
+     * phone orders and the canceled ones (left out of every other figure).
+     *
+     * @return array{day: string, orders: int, revenue: float, phoneOrders: int,
+     *     payments: array<int, array{label: string, orders: int, total: float, unpaid: bool}>,
+     *     types: array<string, array{orders: int, total: float}>, canceled: array{orders: int, total: float}}
+     */
+    public function daySummary(): array
+    {
+        $day = $this->end->toDateString();
+        $canceledId = (int) setting('canceled_order_status');
+        $all = Order::query()
+            ->with(['payment_method', 'payment_logs' => fn ($q) => $q->where('is_success', true)])
+            ->where('status_id', '>', 0)
+            ->whereDate('order_date', $day)
+            ->limit(self::MAX_ORDERS)
+            ->get(['order_id', 'order_total', 'status_id', 'order_type', 'payment', 'processed']);
+
+        [$canceled, $orders] = $all->partition(fn ($o) => $canceledId && (int) $o->status_id === $canceledId);
+        $phoneIds = array_flip(VoxPilotOrderMetadata::whereIn('order_id', $orders->pluck('order_id'))->pluck('order_id')->all());
+
+        $payments = $orders
+            // Paid by the method TastyIgniter knows, else the one the staff chose when marking it paid.
+            ->groupBy(fn ($o) => $o->processed
+                ? ($o->payment_method?->name ?: ($o->payment_logs->last()?->payment_name ?: lang('igniter.voxpilot::orders.paid')))
+                : '')
+            ->map(fn ($group, $label) => [
+                'label' => (string) $label,
+                'orders' => $group->count(),
+                'total' => round((float) $group->sum('order_total'), 2),
+                'unpaid' => $label === '',
+            ])
+            ->sortByDesc('total')
+            ->values()
+            ->all();
+
+        $types = [];
+        foreach (['delivery', 'collection'] as $type) {
+            $group = $orders->filter(fn ($o) => ($o->order_type === 'delivery' ? 'delivery' : 'collection') === $type);
+            $types[$type] = ['orders' => $group->count(), 'total' => round((float) $group->sum('order_total'), 2)];
+        }
+
+        return [
+            'day' => $day,
+            'orders' => $orders->count(),
+            'revenue' => round((float) $orders->sum('order_total'), 2),
+            'phoneOrders' => $orders->filter(fn ($o) => isset($phoneIds[$o->order_id]))->count(),
+            'payments' => $payments,
+            'types' => $types,
+            'canceled' => ['orders' => $canceled->count(), 'total' => round((float) $canceled->sum('order_total'), 2)],
+        ];
     }
 
     protected function orders(): Collection

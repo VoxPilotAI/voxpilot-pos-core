@@ -9,6 +9,7 @@ use Igniter\Admin\Facades\Template;
 use Igniter\Admin\Models\Status;
 use Igniter\Cart\Models\Order;
 use Igniter\VoxPilot\Http\Controllers\Concerns\OrderQuickActions;
+use Igniter\VoxPilot\Http\Controllers\Concerns\StoreControls;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Illuminate\Support\Collection;
 
@@ -16,11 +17,13 @@ use Illuminate\Support\Collection;
  * Orders board: one column per order status, the active orders of the owner's restaurant (orders
  * go through the tenant-scoped Order model), and a button on each card that moves the order to the
  * next status. Status changes go through TastyIgniter's status history, so VoxPilot is notified
- * the same way as from the order page.
+ * the same way as from the order page. Above the columns, the store bar (StoreControls); with
+ * ?kds=1 the board fills the screen for the kitchen.
  */
 class Board extends AdminController
 {
     use OrderQuickActions;
+    use StoreControls;
 
     protected null|string|array $requiredPermissions = ['Admin.Orders'];
 
@@ -34,6 +37,11 @@ class Board extends AdminController
     {
         Template::setTitle($this->pageTitle = lang('igniter.voxpilot::board.title'));
         $this->vars['columns'] = $this->columns();
+        $this->vars['kds'] = (bool) request()->query('kds');
+        if ($this->vars['kds']) {
+            $this->bodyClass = 'vp-kds';
+        }
+        $this->vars = array_merge($this->vars, $this->storeBarVars());
     }
 
     public function onMoveOrder(): array
@@ -108,6 +116,7 @@ class Board extends AdminController
 
         $phoneIds = array_flip(VoxPilotOrderMetadata::whereIn('order_id', $orders->pluck('order_id'))->pluck('order_id')->all());
 
+        $received = (int) setting('default_order_status', 1);
         $columns = [];
         foreach ($statuses as $index => $status) {
             $next = $statuses[$index + 1] ?? null;
@@ -127,6 +136,7 @@ class Board extends AdminController
                 'name' => self::statusLabel($status->status_name),
                 'color' => (string) ($status->status_color ?: '#8a96b4'),
                 'done' => in_array((int) $status->status_id, $completed, true),
+                'accept' => (int) $status->status_id === $received,
                 'next' => $next && !in_array((int) $status->status_id, $completed, true)
                     ? ['id' => (int) $next->status_id, 'name' => self::statusLabel($next->status_name)]
                     : null,

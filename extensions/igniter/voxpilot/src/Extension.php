@@ -67,6 +67,7 @@ class Extension extends BaseExtension
             DashboardWidgets\Assistant::class => ['code' => 'vp_assistant', 'label' => 'igniter.voxpilot::dashboard.widget_assistant'],
             DashboardWidgets\RecentOrders::class => ['code' => 'vp_recent_orders', 'label' => 'igniter.voxpilot::dashboard.widget_recent_orders'],
             DashboardWidgets\TopItems::class => ['code' => 'vp_top_items', 'label' => 'igniter.voxpilot::dashboard.widget_top_items'],
+            DashboardWidgets\DaySummary::class => ['code' => 'vp_day_summary', 'label' => 'igniter.voxpilot::dashboard.widget_day_summary'],
         ];
     }
 
@@ -83,6 +84,7 @@ class Extension extends BaseExtension
                 'vp_assistant' => ['widget' => 'vp_assistant', 'priority' => 30, 'width' => '4'],
                 'vp_recent_orders' => ['widget' => 'vp_recent_orders', 'priority' => 40, 'width' => '8'],
                 'vp_top_items' => ['widget' => 'vp_top_items', 'priority' => 50, 'width' => '4'],
+                'vp_day_summary' => ['widget' => 'vp_day_summary', 'priority' => 60, 'width' => '12'],
             ];
         });
     }
@@ -173,7 +175,11 @@ class Extension extends BaseExtension
     {
         Template::registerHook('startHead', fn () => '<script>(function(){var t=null;try{t=localStorage.getItem("vp-theme")}catch(e){}'
             .'if(t!=="light"&&t!=="dark"){t=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}'
-            .'document.documentElement.setAttribute("data-bs-theme",t)})();</script>');
+            .'document.documentElement.setAttribute("data-bs-theme",t)})();</script>'
+            // Installable POS (kitchen tablets, phones): manifest + /vp-sw.js (registered by vp-admin.js).
+            .'<link rel="manifest" href="'.e(asset('voxpilot/manifest.json')).'">'
+            .'<meta name="theme-color" content="#5b4cf0"><meta name="mobile-web-app-capable" content="yes">'
+            .'<link rel="apple-touch-icon" href="'.e(asset('voxpilot/apple-touch-icon.png')).'">');
 
         Template::registerHook('endStyles', fn () => '<link rel="preconnect" href="https://fonts.googleapis.com">'
             .'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'

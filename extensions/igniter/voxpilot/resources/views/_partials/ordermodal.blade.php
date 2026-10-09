@@ -36,14 +36,89 @@
             @if($order->telephone)
                 <div><dt>@lang('igniter.voxpilot::orders.phone')</dt><dd><a href="tel:{{ preg_replace('/[^0-9+]/', '', $order->telephone) }}">{{ $order->telephone }}</a></dd></div>
             @endif
-            @if($order->order_type === 'delivery' && $order->formatted_address)
-                <div><dt>@lang('igniter.voxpilot::orders.address')</dt><dd>{{ strip_tags((string) $order->formatted_address) }}</dd></div>
+            @if($address)
+                <div><dt>@lang('igniter.voxpilot::orders.address')</dt><dd>{{ $address }}</dd></div>
             @endif
-            @if($order->payment_method)
-                <div><dt>@lang('igniter.voxpilot::orders.payment')</dt><dd>{{ $order->payment_method->name }}</dd></div>
+            <div>
+                <dt>@lang('igniter.voxpilot::orders.payment')</dt>
+                <dd>
+                    @if($order->processed)
+                        <span class="vp-text-success"><i class="fa fa-circle-check"></i> @lang('igniter.voxpilot::orders.paid')</span>
+                    @else
+                        <span class="vp-text-danger">@lang('igniter.voxpilot::orders.unpaid')</span>
+                    @endif
+                    @if($order->payment_method) · {{ $order->payment_method->name }}@endif
+                </dd>
+            </div>
+            @if($order->assignee)
+                <div><dt>@lang('igniter.voxpilot::orders.driver')</dt><dd>{{ $order->assignee->name }}</dd></div>
             @endif
         </dl>
     </div>
+
+    @if($order->telephone)
+        <div class="vp-om-section">
+            <div class="vp-om-section-title">@lang('igniter.voxpilot::orders.customer_history')</div>
+            @if($history['count'])
+                <p class="vp-om-history-sum">{{ trans_choice('igniter.voxpilot::orders.previous_orders', $history['count'], ['total' => currency_format($history['total'])]) }}</p>
+                <ul class="vp-om-history">
+                    @foreach($history['recent'] as $previous)
+                        <li>
+                            <button type="button" class="vp-card-open"
+                                    data-request="onOpenOrder"
+                                    data-request-data="order_id: {{ $previous->order_id }}">
+                                <span class="vp-card-id">#{{ $previous->order_id }}</span>
+                                <span class="vp-om-time">{{ $previous->created_at?->format('d M') }} · {{ $previous->menus->map(fn ($m) => $m->quantity.'× '.$m->name)->implode(', ') }}</span>
+                            </button>
+                            <span>{{ currency_format($previous->order_total) }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="vp-om-history-sum"><span class="vp-pill vp-pill-primary"><i class="fa fa-star"></i> @lang('igniter.voxpilot::orders.first_order')</span></p>
+            @endif
+        </div>
+    @endif
+
+    @unless($isCanceled)
+        <div class="vp-om-tools">
+            @unless($order->processed)
+                <div class="vp-om-section">
+                    <div class="vp-om-section-title">@lang('igniter.voxpilot::orders.mark_paid')</div>
+                    <div class="vp-segmented" role="group" aria-label="@lang('igniter.voxpilot::orders.mark_paid')">
+                        @foreach($paymentMethods as $method)
+                            <button type="button"
+                                    data-request="onMarkOrderPaid"
+                                    data-request-data="order_id: {{ $order->order_id }}, method: '{{ $method }}'">
+                                <i class="fa {{ ['cash' => 'fa-money-bill-wave', 'card' => 'fa-credit-card', 'transfer' => 'fa-building-columns'][$method] }}"></i>
+                                @lang('igniter.voxpilot::orders.pay_'.$method)
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            @endunless
+            @if($order->order_type === 'delivery')
+                <div class="vp-om-section">
+                    <div class="vp-om-section-title">@lang('igniter.voxpilot::orders.driver')</div>
+                    <div class="vp-om-inline">
+                        @if($staff->count())
+                            <select class="form-select" name="assignee_id" aria-label="@lang('igniter.voxpilot::orders.assign_driver')"
+                                    data-request="onAssignOrder"
+                                    data-request-data="order_id: {{ $order->order_id }}">
+                                <option value="0">@lang('igniter.voxpilot::orders.unassigned')</option>
+                                @foreach($staff as $member)
+                                    <option value="{{ $member->user_id }}" @selected((int) $order->assignee_id === (int) $member->user_id)>{{ $member->name }}</option>
+                                @endforeach
+                            </select>
+                        @endif
+                        @if($mapUrl)
+                            <a class="btn btn-light" href="{{ $mapUrl }}" target="_blank" rel="noopener noreferrer"><i class="fa fa-map-location-dot"></i> @lang('igniter.voxpilot::orders.open_map')</a>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        </div>
+    @endunless
 
     @unless($isCanceled)
         <div class="vp-om-section">

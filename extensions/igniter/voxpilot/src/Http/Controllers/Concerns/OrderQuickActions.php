@@ -6,12 +6,17 @@ namespace Igniter\VoxPilot\Http\Controllers\Concerns;
 
 use Igniter\Admin\Models\Status;
 use Igniter\Cart\Models\Order;
+use Igniter\PayRegister\Models\PaymentLog;
+use Igniter\User\Models\User;
+use Igniter\VoxPilot\Models\TenantMembership;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
+use Igniter\VoxPilot\Support\StatusLabel;
 use Illuminate\Support\Collection;
 
 /**
  * Quick actions on an order from the board and the live screen: a modal with the order's details,
- * buttons for every status (the next one first), cancel, print and a link to the full order.
+ * the customer's earlier orders, buttons for every status (the next one first), mark as paid,
+ * assign a driver, cancel, print and a link to the full order.
  * Orders are read through the tenant-scoped Order model, so an owner only reaches their own
  * restaurant's orders; status changes go through TastyIgniter's status history (VoxPilot is
  * notified the same way as from the order page).
@@ -42,6 +47,55 @@ trait OrderQuickActions
         );
     }
 
+    /** Cash, card or bank transfer (SINPE and the like) taken by the staff. */
+    public const PAYMENT_METHODS = ['cash', 'card', 'transfer'];
+
+    public function onMarkOrderPaid(): array
+    {
+        $order = $this->findQuickOrder();
+        $method = (string) request()->input('method');
+        if (in_array($method, self::PAYMENT_METHODS, true) && !$order->processed) {
+            $order->markAsPaymentProcessed();
+            $this->logStaffPayment($order, $method);
+            $order->refresh();
+        }
+
+        return ['#vp-order-modal-content' => $this->renderOrderModal($order)];
+    }
+
+    /**
+     * Payment log entry for a payment the staff took. Phone orders have no TastyIgniter payment
+     * method (Order::logPaymentAttempt needs one), so the entry names the method the staff chose.
+     */
+    protected function logStaffPayment(Order $order, string $method): void
+    {
+        $label = lang('igniter.voxpilot::orders.pay_'.$method);
+        $log = new PaymentLog();
+        $log->order_id = $order->order_id;
+        $log->payment_code = $order->payment_method?->code ?: 'vp_'.$method;
+        $log->payment_name = $order->payment_method?->name ?: $label;
+        $log->message = lang('igniter.voxpilot::orders.paid_note', ['method' => $label, 'user' => (string) ($this->getUser()?->name ?? '')]);
+        $log->is_success = true;
+        $log->request = ['method' => $method];
+        $log->response = [];
+        $log->is_refundable = false;
+        $log->save();
+    }
+
+    /** Assigns the order to one of the restaurant's staff (0 = nobody). */
+    public function onAssignOrder(): array
+    {
+        $order = $this->findQuickOrder();
+        $assigneeId = (int) request()->input('assignee_id');
+        $assignee = $assigneeId ? $this->assignableStaff($order)->firstWhere('user_id', $assigneeId) : null;
+        if ($assignee || $assigneeId === 0) {
+            $order->updateAssignTo(null, $assignee, $this->getUser());
+            $order->refresh();
+        }
+
+        return ['#vp-order-modal-content' => $this->renderOrderModal($order)];
+    }
+
     /** Extra partial updates after a status change (the board re-renders its columns). */
     protected function afterQuickStatusChange(Order $order): array
     {
@@ -50,7 +104,7 @@ trait OrderQuickActions
 
     protected function findQuickOrder(): Order
     {
-        return Order::query()->with(['menus', 'status', 'address', 'payment_method'])
+        return Order::query()->with(['menus', 'status', 'address', 'payment_method', 'assignee'])
             ->findOrFail((int) request()->input('order_id'));
     }
 
@@ -83,9 +137,53 @@ trait OrderQuickActions
     /** TastyIgniter's default status names in the admin's language; custom names as they are. */
     public static function statusLabel(?string $name): string
     {
-        $key = 'igniter.voxpilot::orders.status_'.strtolower(str_replace(' ', '_', (string) $name));
+        return StatusLabel::for($name);
+    }
 
-        return lang($key) !== $key ? lang($key) : (string) $name;
+    /** Staff of the order's restaurant, the only ones an order can be assigned to. */
+    protected function assignableStaff(Order $order): Collection
+    {
+        $ids = TenantMembership::where('tenant_id', $order->tenant_id)->pluck('user_id');
+
+        return User::query()->whereIn('user_id', $ids)->where('status', true)->orderBy('name')->get();
+    }
+
+    /** The customer's other orders at this restaurant, by phone number (tenant-scoped Order model). */
+    protected function customerHistory(Order $order): array
+    {
+        $phone = trim((string) $order->telephone);
+        if ($phone === '') {
+            return ['count' => 0, 'total' => 0.0, 'recent' => collect()];
+        }
+
+        $query = fn () => Order::query()->where('telephone', $phone)
+            ->where('order_id', '!=', $order->order_id)
+            ->where('status_id', '>', 0);
+
+        return [
+            'count' => $query()->count(),
+            'total' => (float) $query()->sum('order_total'),
+            'recent' => $query()->with('menus')->orderByDesc('order_id')->limit(3)->get(),
+        ];
+    }
+
+    /** Delivery address: TastyIgniter's address, or the line VoxPilot puts in the comment. */
+    public static function deliveryAddress(Order $order): ?string
+    {
+        if ($order->order_type !== 'delivery') {
+            return null;
+        }
+        $address = trim(strip_tags((string) $order->formatted_address));
+        if ($address !== '') {
+            return $address;
+        }
+        foreach (preg_split('/\R/', (string) $order->comment) as $line) {
+            if (str_starts_with($line, '📍')) {
+                return trim(mb_substr($line, 1)) ?: null;
+            }
+        }
+
+        return null;
     }
 
     protected function renderStatusPill(Order $order): string
@@ -98,8 +196,15 @@ trait OrderQuickActions
         $canceled = $this->canceledStatusId();
         $next = $this->nextStatusId($order);
 
+        $address = self::deliveryAddress($order);
+
         return $this->makePartial('ordermodal', [
             'order' => $order,
+            'history' => $this->customerHistory($order),
+            'address' => $address,
+            'mapUrl' => $address ? 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($address) : null,
+            'staff' => $order->order_type === 'delivery' ? $this->assignableStaff($order) : collect(),
+            'paymentMethods' => self::PAYMENT_METHODS,
             'phone' => VoxPilotOrderMetadata::where('order_id', $order->order_id)->exists(),
             'statuses' => $this->quickStatuses()->reject(fn ($s) => (int) $s->status_id === $canceled)->values(),
             'nextStatus' => $next ? $this->quickStatuses()->firstWhere('status_id', $next) : null,

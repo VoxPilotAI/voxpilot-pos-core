@@ -224,7 +224,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var failures = 0;
     locations.forEach(function (locationId) {
         echo.private('tenant.' + tenantId + '.location.' + locationId + '.orders')
-            .listen('.voxpilot.order.created', function (data) { chime(); addTicket(data); })
+            .listen('.voxpilot.order.created', function (data) {
+                chime(); addTicket(data);
+                if (window.vpNotify) window.vpNotify(@json(lang('igniter.voxpilot::board.new_order_notification', ['id' => ':id'])).replace(':id', data.order_id), (data.customer && data.customer.name) || '', window.location.href);
+            })
             .error(function () { failures++; if (failures >= locations.length) setStatus('danger', t.auth_failed); });
     });
     if (!locations.length) setStatus('muted', t.no_locations);

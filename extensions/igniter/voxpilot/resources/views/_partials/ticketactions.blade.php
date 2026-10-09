@@ -2,7 +2,8 @@
     @if((int) $order->status_id === (int) setting('default_order_status', 1))
         <button type="button" class="btn btn-primary vp-ticket-accept"
                 data-request="onSetOrderStatus"
-                data-request-data="order_id: {{ $order->order_id }}, status_id: 'next'">
+                data-request-data="order_id: {{ $order->order_id }}, status_id: 'next'"
+                data-request-success="vpAfterAccept({{ $order->order_id }})">
             <i class="fa fa-check"></i> @lang('igniter.voxpilot::orders.accept')
         </button>
     @endif
