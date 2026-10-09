@@ -1,0 +1,296 @@
+/*
+ * VoxPilot POS admin skin. Loaded after TastyIgniter's admin CSS by the VoxPilot extension
+ * (Template hook "endStyles"). Retints Bootstrap 5.3's variables for light and dark mode and
+ * restyles the TastyIgniter chrome (header, sidebar, cards, lists, forms) in the voxpilothq.io
+ * look. html[data-bs-theme] is set before first paint by the "startHead" hook (vp-admin.js keeps it).
+ */
+
+html[data-bs-theme=light] {
+    --vp-bg: #f5f6fb;
+    --vp-panel: #ffffff;
+    --vp-panel-2: #f0f1f8;
+    --vp-fg: #0b0d17;
+    --vp-muted: #586079;
+    --vp-border: rgba(12, 14, 40, 0.09);
+    --vp-border-strong: rgba(12, 14, 40, 0.16);
+    --vp-primary: #5b4cf0;
+    --vp-primary-rgb: 91, 76, 240;
+    --vp-primary-hover: #4b3bdf;
+    --vp-primary-soft: rgba(91, 76, 240, 0.10);
+    --vp-accent: #0e7490;
+    --vp-accent-soft: rgba(14, 116, 144, 0.10);
+    --vp-success: #0b7a5e;
+    --vp-success-soft: rgba(11, 122, 94, 0.10);
+    --vp-warning: #9a5b0b;
+    --vp-warning-soft: rgba(183, 121, 31, 0.12);
+    --vp-danger: #c0354f;
+    --vp-danger-soft: rgba(192, 53, 79, 0.10);
+    --vp-track: rgba(12, 14, 40, 0.06);
+    --vp-shadow: 0 1px 2px rgba(12, 14, 40, 0.04), 0 8px 24px -12px rgba(12, 14, 40, 0.10);
+    color-scheme: light;
+}
+
+html[data-bs-theme=dark] {
+    --vp-bg: #05070d;
+    --vp-panel: #0b0f1a;
+    --vp-panel-2: #111726;
+    --vp-fg: #e9edf7;
+    --vp-muted: #8a96b4;
+    --vp-border: rgba(255, 255, 255, 0.08);
+    --vp-border-strong: rgba(255, 255, 255, 0.16);
+    --vp-primary: #8b7dff;
+    --vp-primary-rgb: 139, 125, 255;
+    --vp-primary-hover: #a197ff;
+    --vp-primary-soft: rgba(124, 108, 255, 0.16);
+    --vp-accent: #22d3ee;
+    --vp-accent-soft: rgba(34, 211, 238, 0.12);
+    --vp-success: #38e8c5;
+    --vp-success-soft: rgba(56, 232, 197, 0.12);
+    --vp-warning: #fbbf5a;
+    --vp-warning-soft: rgba(251, 191, 90, 0.12);
+    --vp-danger: #fb7185;
+    --vp-danger-soft: rgba(251, 113, 133, 0.12);
+    --vp-track: rgba(255, 255, 255, 0.06);
+    --vp-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+}
+
+/* Bootstrap variables */
+html[data-bs-theme] {
+    --bs-font-sans-serif: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --bs-body-font-family: var(--bs-font-sans-serif);
+    --bs-body-bg: var(--vp-panel);
+    --bs-body-color: var(--vp-fg);
+    --bs-emphasis-color: var(--vp-fg);
+    --bs-secondary-color: var(--vp-muted);
+    --bs-tertiary-color: var(--vp-muted);
+    --bs-secondary-bg: var(--vp-panel-2);
+    --bs-tertiary-bg: var(--vp-bg);
+    --bs-border-color: var(--vp-border);
+    --bs-border-color-translucent: var(--vp-border);
+    --bs-primary: var(--vp-primary);
+    --bs-primary-rgb: var(--vp-primary-rgb);
+    --bs-primary-bg-subtle: var(--vp-primary-soft);
+    --bs-primary-border-subtle: var(--vp-primary-soft);
+    --bs-primary-text-emphasis: var(--vp-primary);
+    --bs-link-color: var(--vp-primary);
+    --bs-link-color-rgb: var(--vp-primary-rgb);
+    --bs-link-hover-color: var(--vp-primary-hover);
+    --bs-focus-ring-color: rgba(var(--vp-primary-rgb), 0.25);
+    --bs-border-radius: 10px;
+    --bs-border-radius-sm: 8px;
+    --bs-border-radius-lg: 14px;
+    --bs-card-bg: var(--vp-panel);
+    --bs-nav-link-hover-color: var(--vp-primary);
+}
+
+html[data-bs-theme] body {
+    background: var(--vp-bg);
+    color: var(--vp-fg);
+    font-family: var(--bs-font-sans-serif);
+    -webkit-font-smoothing: antialiased;
+}
+
+html[data-bs-theme] h1, html[data-bs-theme] h2, html[data-bs-theme] h3,
+html[data-bs-theme] .h1, html[data-bs-theme] .h2, html[data-bs-theme] .h3,
+html[data-bs-theme] .page-title, html[data-bs-theme] .widget-title {
+    font-family: "Space Grotesk", Inter, sans-serif;
+    letter-spacing: -0.01em;
+}
+
+/* Surfaces TastyIgniter hard-codes white */
+html[data-bs-theme] .bg-white, html[data-bs-theme] .bg-light { background-color: var(--vp-panel) !important; }
+html[data-bs-theme] .text-muted { color: var(--vp-muted) !important; }
+html[data-bs-theme] .border, html[data-bs-theme] .border-top, html[data-bs-theme] .border-bottom,
+html[data-bs-theme] .border-start, html[data-bs-theme] .border-end, html[data-bs-theme] .border-right { border-color: var(--vp-border) !important; }
+
+/* Header */
+html[data-bs-theme] .navbar-top {
+    background: color-mix(in srgb, var(--vp-panel) 86%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--vp-border) !important;
+    min-height: 64px;
+}
+html[data-bs-theme] .navbar-top .logo-svg { height: 26px; width: auto; }
+html[data-bs-theme] .navbar-top .nav-link { color: var(--vp-muted); border-radius: 10px; }
+html[data-bs-theme] .navbar-top .nav-link:hover, html[data-bs-theme] .navbar-top .nav-item.show > .nav-link { color: var(--vp-fg); background: var(--vp-panel-2); }
+html[data-bs-theme] .navbar-top .nav-link .fa { color: inherit !important; }
+#menu-mainmenu-help, #menu-mainmenu-preview { display: none !important; }
+.vp-theme-toggle .nav-link { display: grid; place-items: center; width: 40px; height: 40px; padding: 0 !important; cursor: pointer; }
+.vp-theme-toggle svg { width: 18px; height: 18px; }
+html[data-bs-theme=light] .vp-theme-toggle .vp-icon-sun { display: none; }
+html[data-bs-theme=dark] .vp-theme-toggle .vp-icon-moon { display: none; }
+
+/* Dropdowns and modals */
+html[data-bs-theme] .dropdown-menu {
+    --bs-dropdown-bg: var(--vp-panel);
+    --bs-dropdown-color: var(--vp-fg);
+    --bs-dropdown-border-color: var(--vp-border);
+    --bs-dropdown-link-color: var(--vp-fg);
+    --bs-dropdown-link-hover-bg: var(--vp-panel-2);
+    --bs-dropdown-link-hover-color: var(--vp-fg);
+    --bs-dropdown-link-active-bg: var(--vp-primary-soft);
+    --bs-dropdown-link-active-color: var(--vp-primary);
+    border-radius: 14px;
+    box-shadow: var(--vp-shadow);
+    padding: 6px;
+}
+html[data-bs-theme] .dropdown-item { border-radius: 8px; }
+html[data-bs-theme] .modal-content { background: var(--vp-panel); border: 1px solid var(--vp-border); border-radius: 18px; box-shadow: var(--vp-shadow); }
+html[data-bs-theme] .modal-header, html[data-bs-theme] .modal-footer { border-color: var(--vp-border); }
+
+/* Sidebar */
+html[data-bs-theme] .sidebar { background: var(--vp-panel) !important; border-right: 1px solid var(--vp-border) !important; width: 15rem !important; }
+html[data-bs-theme] .nav-sidebar .nav > li > a,
+html[data-bs-theme] .nav-sidebar .nav-link {
+    display: flex; align-items: center; gap: 10px;
+    min-height: 42px; margin: 2px 4px; padding: 0 12px;
+    border-radius: 10px; color: var(--vp-muted); font-weight: 500; font-size: 14px;
+}
+html[data-bs-theme] .nav-sidebar .nav > li > a .fa { color: inherit !important; }
+html[data-bs-theme] .nav-sidebar .nav > li > a:hover { background: var(--vp-panel-2); color: var(--vp-fg); }
+html[data-bs-theme] .nav-sidebar .nav li.active > a,
+html[data-bs-theme] .nav-sidebar .nav .nav li > a.active { background: var(--vp-primary-soft); color: var(--vp-primary) !important; font-weight: 600; }
+html[data-bs-theme] .nav-sidebar .nav .nav a { padding-left: 40px; }
+
+/* Page */
+html[data-bs-theme] .page-wrapper { background: var(--vp-bg); }
+html[data-bs-theme] .page-content { padding-left: 8px; padding-right: 8px; }
+
+/* Cards and dashboard widgets */
+html[data-bs-theme] .card {
+    --bs-card-bg: var(--vp-panel);
+    --bs-card-border-color: var(--vp-border);
+    --bs-card-cap-bg: transparent;
+    border: 1px solid var(--vp-border);
+    border-radius: 18px;
+    box-shadow: var(--vp-shadow) !important;
+}
+html[data-bs-theme] .widget-item.card { padding: 20px !important; }
+html[data-bs-theme] .widget-title { font-size: 17px; font-weight: 600; }
+
+/* Buttons */
+html[data-bs-theme] .btn { border-radius: 10px; font-weight: 600; }
+html[data-bs-theme] .btn-primary, html[data-bs-theme] .btn-orange {
+    --bs-btn-bg: var(--vp-primary);
+    --bs-btn-border-color: var(--vp-primary);
+    --bs-btn-color: #ffffff;
+    --bs-btn-hover-bg: var(--vp-primary-hover);
+    --bs-btn-hover-border-color: var(--vp-primary-hover);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-active-bg: var(--vp-primary-hover);
+    --bs-btn-active-border-color: var(--vp-primary-hover);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-disabled-bg: var(--vp-primary);
+    --bs-btn-disabled-border-color: var(--vp-primary);
+    --bs-btn-focus-shadow-rgb: var(--vp-primary-rgb);
+    box-shadow: 0 6px 20px -10px rgba(var(--vp-primary-rgb), 0.9);
+}
+html[data-bs-theme] .btn-outline-primary, html[data-bs-theme] .btn-outline-orange {
+    --bs-btn-color: var(--vp-primary);
+    --bs-btn-border-color: var(--vp-primary);
+    --bs-btn-hover-bg: var(--vp-primary-soft);
+    --bs-btn-hover-border-color: var(--vp-primary);
+    --bs-btn-hover-color: var(--vp-primary);
+    --bs-btn-active-bg: var(--vp-primary-soft);
+    --bs-btn-active-color: var(--vp-primary);
+}
+html[data-bs-theme] .btn-light, html[data-bs-theme] .btn-default, html[data-bs-theme] .btn-secondary {
+    --bs-btn-bg: var(--vp-panel);
+    --bs-btn-border-color: var(--vp-border-strong);
+    --bs-btn-color: var(--vp-fg);
+    --bs-btn-hover-bg: var(--vp-panel-2);
+    --bs-btn-hover-border-color: var(--vp-border-strong);
+    --bs-btn-hover-color: var(--vp-fg);
+    --bs-btn-active-bg: var(--vp-panel-2);
+    --bs-btn-active-color: var(--vp-fg);
+}
+html[data-bs-theme] .btn-edit { color: var(--vp-primary) !important; border-color: var(--vp-border-strong) !important; background: var(--vp-panel) !important; }
+html[data-bs-theme] .btn-edit:hover { background: var(--vp-primary-soft) !important; }
+
+/* TastyIgniter paints .btn-light/.btn-default white directly, not through the variables */
+html[data-bs-theme] .btn-light, html[data-bs-theme] .btn-default { background-color: var(--bs-btn-bg); border-color: var(--bs-btn-border-color); color: var(--bs-btn-color); }
+html[data-bs-theme] .btn-light:hover, html[data-bs-theme] .btn-default:hover { background-color: var(--bs-btn-hover-bg); color: var(--bs-btn-hover-color); }
+html[data-bs-theme] .btn-danger { --bs-btn-bg: var(--vp-danger); --bs-btn-border-color: var(--vp-danger); }
+html[data-bs-theme] .btn-success { --bs-btn-bg: var(--vp-success); --bs-btn-border-color: var(--vp-success); --bs-btn-color: #04121a; }
+
+/* Toolbars */
+html[data-bs-theme] .toolbar.btn-toolbar { background: transparent; }
+html[data-bs-theme] .toolbar-action { gap: 8px; }
+
+/* Lists */
+html[data-bs-theme] .list-table {
+    background: var(--vp-panel);
+    border: 1px solid var(--vp-border);
+    border-radius: 18px;
+    box-shadow: var(--vp-shadow);
+    overflow: hidden;
+}
+html[data-bs-theme] .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--vp-fg);
+    --bs-table-border-color: var(--vp-border);
+    --bs-table-hover-bg: var(--vp-panel-2);
+    --bs-table-hover-color: var(--vp-fg);
+    --bs-table-striped-bg: var(--vp-panel-2);
+    margin-bottom: 0;
+}
+html[data-bs-theme] .table > thead th {
+    background: var(--vp-panel-2);
+    color: var(--vp-muted);
+    font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    border-bottom: 1px solid var(--vp-border);
+}
+html[data-bs-theme] .table > :not(caption) > * > * { padding-top: 14px; padding-bottom: 14px; }
+html[data-bs-theme] .list-filter, html[data-bs-theme] .filter-scope { background: transparent; }
+html[data-bs-theme] .label, html[data-bs-theme] .badge { border-radius: 999px; padding: 4px 10px; font-weight: 600; }
+html[data-bs-theme] .pagination { --bs-pagination-active-bg: var(--vp-primary); --bs-pagination-active-border-color: var(--vp-primary); --bs-pagination-color: var(--vp-fg); --bs-pagination-bg: var(--vp-panel); --bs-pagination-border-color: var(--vp-border); }
+
+/* Forms */
+html[data-bs-theme] .form-control, html[data-bs-theme] .form-select, html[data-bs-theme] .input-group-text {
+    background-color: var(--vp-panel);
+    border-color: var(--vp-border-strong);
+    color: var(--vp-fg);
+    border-radius: 10px;
+    min-height: 42px;
+}
+html[data-bs-theme] .input-group-text { background: var(--vp-panel-2); color: var(--vp-muted); }
+html[data-bs-theme] .form-control:focus, html[data-bs-theme] .form-select:focus {
+    border-color: var(--vp-primary);
+    box-shadow: 0 0 0 3px rgba(var(--vp-primary-rgb), 0.2);
+}
+html[data-bs-theme] .form-control::placeholder { color: var(--vp-muted); opacity: 0.8; }
+html[data-bs-theme] .form-check-input:checked { background-color: var(--vp-primary); border-color: var(--vp-primary); }
+html[data-bs-theme] .form-label, html[data-bs-theme] label { color: var(--vp-fg); font-weight: 500; }
+html[data-bs-theme] .help-block { color: var(--vp-muted); }
+html[data-bs-theme] .form-nav.nav-tabs { border-bottom: 1px solid var(--vp-border); }
+html[data-bs-theme] .form-nav.nav-tabs .nav-link { color: var(--vp-muted); border: 0; border-bottom: 2px solid transparent; }
+html[data-bs-theme] .form-nav.nav-tabs .nav-link.active { color: var(--vp-primary); background: transparent; border-bottom-color: var(--vp-primary); }
+html[data-bs-theme] .section-title { color: var(--vp-fg); }
+html[data-bs-theme] .nav-pills { --bs-nav-pills-link-active-bg: var(--vp-primary); }
+
+/* Loading bar and progress */
+html[data-bs-theme] .bar-loading-indicator .bar, html[data-bs-theme] .bar-loading-indicator .bar-loaded { background: linear-gradient(90deg, var(--vp-primary), var(--vp-accent)); }
+html[data-bs-theme] .progress { --bs-progress-bar-bg: var(--vp-primary); --bs-progress-bg: var(--vp-track); }
+
+/* Flash messages */
+html[data-bs-theme] .alert { border-radius: 14px; border: 1px solid var(--vp-border); }
+html[data-bs-theme] .alert-success { background: var(--vp-success-soft); color: var(--vp-success); }
+html[data-bs-theme] .alert-danger { background: var(--vp-danger-soft); color: var(--vp-danger); }
+html[data-bs-theme] .alert-warning { background: var(--vp-warning-soft); color: var(--vp-warning); }
+html[data-bs-theme] .alert-info { background: var(--vp-accent-soft); color: var(--vp-accent); }
+
+/* Sign-in page */
+html[data-bs-theme] body.page-login { background: var(--vp-bg); }
+html[data-bs-theme] body.page-login .login-container .card { border-radius: 20px; padding: 12px; }
+html[data-bs-theme] body.page-login .login-container .btn-primary { width: 100%; min-height: 48px; }
+
+/* Scrollbars in dark mode */
+html[data-bs-theme=dark] ::-webkit-scrollbar { width: 10px; height: 10px; }
+html[data-bs-theme=dark] ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 10px; }
+html[data-bs-theme=dark] ::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-bs-theme] * { transition: none !important; animation: none !important; }
+}

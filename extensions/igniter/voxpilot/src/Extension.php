@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot;
 
+use Igniter\Admin\Facades\Template;
 use Igniter\Cart\Models\Order;
 use Igniter\Local\Models\Location;
 use Igniter\System\Helpers\MailHelper;
@@ -29,6 +30,9 @@ use Override;
 
 class Extension extends BaseExtension
 {
+    /** Cache-buster for the admin skin assets; bump when public/voxpilot/admin changes. */
+    private const SKIN_VERSION = '1';
+
     #[Override]
     public function register(): void
     {
@@ -118,6 +122,27 @@ class Extension extends BaseExtension
         View::prependNamespace('igniter.user', __DIR__.'/../resources/views/overrides/igniter.user');
 
         $this->app['router']->pushMiddlewareToGroup('igniter', StorefrontLanding::class);
+
+        $this->registerAdminSkin();
+    }
+
+    /**
+     * VoxPilot look for the whole admin (public/voxpilot/admin): light and dark mode on top of
+     * Bootstrap 5.3's data-bs-theme. The theme is set before first paint, from the saved choice
+     * or the device setting, so pages never flash the wrong colours.
+     */
+    protected function registerAdminSkin(): void
+    {
+        Template::registerHook('startHead', fn () => '<script>(function(){var t=null;try{t=localStorage.getItem("vp-theme")}catch(e){}'
+            .'if(t!=="light"&&t!=="dark"){t=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}'
+            .'document.documentElement.setAttribute("data-bs-theme",t)})();</script>');
+
+        Template::registerHook('endStyles', fn () => '<link rel="preconnect" href="https://fonts.googleapis.com">'
+            .'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            .'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">'
+            .'<link rel="stylesheet" href="'.e(asset('voxpilot/admin/vp-admin.css')).'?v='.self::SKIN_VERSION.'">');
+
+        Template::registerHook('endScripts', fn () => '<script src="'.e(asset('voxpilot/admin/vp-admin.js')).'?v='.self::SKIN_VERSION.'"></script>');
     }
 
     protected function registerAdminMiddleware(): void
