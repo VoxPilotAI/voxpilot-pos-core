@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot\Services;
 
 use Igniter\Local\Models\Location;
+use Igniter\System\Mail\AnonymousTemplateMailable;
 use Igniter\User\Models\User;
 use Igniter\User\Models\UserRole;
 use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantMembership;
+use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Symfony\Component\Mime\Address;
 
 class TenantProvisioningService
 {
@@ -60,16 +64,37 @@ class TenantProvisioningService
         // VoxPilot. Sent after commit, and only for an owner created here; a mail failure never
         // undoes the provisioning.
         if ($ownerCreated && ($payload['send_owner_invite'] ?? true) && config('voxpilot.send_owner_invite', true)) {
-            $result['owner_invite_sent'] = $this->sendOwnerInvite((int) $result['admin_user_id']);
+            $result['owner_invite_sent'] = $this->sendOwnerInvite(
+                (int) $result['admin_user_id'],
+                Locale::normalize($payload['locale'] ?? null),
+            );
         }
 
         return $result;
     }
 
-    protected function sendOwnerInvite(int $userId): bool
+    /**
+     * TastyIgniter's staff invite (igniter.user::mail.invite, rendered with the VoxPilot template),
+     * queued in the owner's language. User::sendInvite() queues it in the request locale, so the
+     * same steps are done here with the locale set on the mailable.
+     */
+    protected function sendOwnerInvite(int $userId, string $locale): bool
     {
         try {
-            User::findOrFail($userId)->sendInvite();
+            $user = User::findOrFail($userId);
+            $inviteCode = Str::random(42);
+            User::where('user_id', $userId)->update([
+                'reset_code' => $inviteCode,
+                'reset_time' => now(),
+                'invited_at' => now(),
+            ]);
+
+            Mail::queue(
+                AnonymousTemplateMailable::create('igniter.user::mail.invite')
+                    ->applyCallback(new Address($user->email, (string) $user->name))
+                    ->withSerializedData(array_merge($user->mailGetData(), ['invite_code' => $inviteCode]))
+                    ->locale($locale),
+            );
 
             return true;
         } catch (\Throwable $e) {

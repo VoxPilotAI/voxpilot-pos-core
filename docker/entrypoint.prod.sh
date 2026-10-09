@@ -21,6 +21,10 @@ php artisan igniter:up --force --no-interaction
 # Publish admin + theme assets into public/vendor (gitignored, so not in the image).
 # Without this the storefront and admin render unstyled.
 php artisan vendor:publish --tag=laravel-assets --force --no-interaction
+# VoxPilot branding: admin favicon (published by TastyIgniter core) and the site name used in
+# browser titles and email sender names.
+cp public/voxpilot/favicon.svg public/vendor/igniter/images/favicon.svg
+php artisan voxpilot:brand --no-interaction
 
 # Ensure writable dirs
 mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache

@@ -11,7 +11,9 @@ use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantApiToken;
 use Igniter\VoxPilot\Models\TenantMembership;
 use Igniter\VoxPilot\Services\InstallationService;
+use Igniter\System\Mail\AnonymousTemplateMailable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -95,6 +97,30 @@ class ProvisioningEndpointTest extends TestCase
             ->assertJsonPath('data.api_token', null)
             ->assertJsonPath('data.owner_invite_sent', false);
         $this->assertSame($tenantsAfterFirst, Tenant::count());
+    }
+
+    public function test_owner_invite_is_queued_in_the_owner_language(): void
+    {
+        Mail::fake();
+        $payload = $this->payload() + ['locale' => 'es-CR'];
+
+        $this->postJson('/api/voxpilot/provision/tenants', $payload, $this->auth())
+            ->assertStatus(201)
+            ->assertJsonPath('data.owner_invite_sent', true);
+
+        Mail::assertQueued(AnonymousTemplateMailable::class, fn (AnonymousTemplateMailable $mail) => $mail->getTemplateCode() === 'igniter.user::mail.invite'
+            && $mail->locale === 'es'
+            && $mail->hasTo($payload['admin_email']));
+    }
+
+    public function test_owner_invite_falls_back_to_english_for_unsupported_languages(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/voxpilot/provision/tenants', $this->payload() + ['locale' => 'ja'], $this->auth())
+            ->assertStatus(201);
+
+        Mail::assertQueued(AnonymousTemplateMailable::class, fn (AnonymousTemplateMailable $mail) => $mail->locale === 'en');
     }
 
     public function test_owner_invite_can_be_skipped(): void
