@@ -28,6 +28,8 @@ class ProvisioningController extends Controller
             'phone' => 'nullable|string|max:50',
             'webhook_callback_url' => 'nullable|url:http,https|max:2048',
             'send_owner_invite' => 'nullable|boolean',
+            // Owner's language ("es", "de-CH"…) for the invite email; unsupported ones fall back to English.
+            'locale' => 'nullable|string|max:20',
         ]);
 
         if ($validator->fails()) {

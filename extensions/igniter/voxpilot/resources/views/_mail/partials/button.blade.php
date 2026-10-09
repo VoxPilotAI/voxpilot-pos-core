@@ -1,0 +1,5 @@
+name = "Button"
+==
+{{ $slot }}: {{ $url }}
+==
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 8px 0 20px 0;"><tr><td align="center" class="vp-btn" style="padding: 0;"><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $url }}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="17%" strokecolor="#0A4174" fillcolor="#0A4174"><w:anchorlock/><center style="color:#f4f8fb;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">{{ $slot }}</center></v:roundrect><![endif]--><!--[if !mso]><!--><a href="{{ $url }}" target="_blank" rel="noopener" style="display: inline-block; background-color: #0A4174; color: #f4f8fb; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; line-height: 48px; text-align: center; text-decoration: none; min-width: 220px; padding: 0 28px; border-radius: 8px; -webkit-text-size-adjust: none;">{{ $slot }}</a><!--<![endif]--></td></tr></table>

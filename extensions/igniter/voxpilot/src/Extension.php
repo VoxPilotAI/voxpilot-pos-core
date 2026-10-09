@@ -6,13 +6,17 @@ namespace Igniter\VoxPilot;
 
 use Igniter\Cart\Models\Order;
 use Igniter\Local\Models\Location;
+use Igniter\System\Helpers\MailHelper;
 use Igniter\System\Classes\BaseExtension;
+use Igniter\VoxPilot\Console\ApplyBranding;
 use Igniter\VoxPilot\Console\BootstrapTenant;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantForAdmin;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
+use Igniter\VoxPilot\Http\Middleware\StorefrontLanding;
 use Igniter\VoxPilot\Http\Middleware\VerifyHmacSignature;
 use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
 use Igniter\VoxPilot\Jobs\NotifyStatusChange;
+use Igniter\VoxPilot\Mail\LocalizedMailHelper;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Scopes\TenantLocationScope;
 use Igniter\VoxPilot\Scopes\TenantOrderScope;
@@ -20,6 +24,7 @@ use Igniter\VoxPilot\Services\TenantContext;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 use Override;
 
 class Extension extends BaseExtension
@@ -28,16 +33,20 @@ class Extension extends BaseExtension
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+        // Staff emails go out in the staff member's language (see LocalizedMailHelper).
+        $this->app->bind(MailHelper::class, LocalizedMailHelper::class);
 
         $this->mergeConfigFrom(__DIR__.'/../config/voxpilot.php', 'voxpilot');
 
         $this->registerConsoleCommand('voxpilot.bootstrap-tenant', BootstrapTenant::class);
+        $this->registerConsoleCommand('voxpilot.brand', ApplyBranding::class);
     }
 
     #[Override]
     public function boot(): void
     {
         $this->registerAdminMiddleware();
+        $this->registerBranding();
         $this->registerTenantScopes();
         $this->registerApiRoutes();
         $this->registerProvisioningRoutes();
@@ -80,6 +89,35 @@ class Extension extends BaseExtension
                 'group' => 'igniter::system.permissions.name',
             ],
         ];
+    }
+
+    /**
+     * Mail layout and button in the VoxPilot email style, used by every POS email.
+     */
+    public function registerMailLayouts(): array
+    {
+        return [
+            'default' => 'igniter.voxpilot::_mail.layouts.default',
+        ];
+    }
+
+    public function registerMailPartials(): array
+    {
+        return [
+            'button' => 'igniter.voxpilot::_mail.partials.button',
+        ];
+    }
+
+    /**
+     * VoxPilot POS branding: the storefront landing page, and the owner emails (staff invite and
+     * admin password reset) rewritten with translated VoxPilot copy. The overrides resolve before
+     * the igniter.user views, so TastyIgniter keeps sending them through its own code paths.
+     */
+    protected function registerBranding(): void
+    {
+        View::prependNamespace('igniter.user', __DIR__.'/../resources/views/overrides/igniter.user');
+
+        $this->app['router']->pushMiddlewareToGroup('igniter', StorefrontLanding::class);
     }
 
     protected function registerAdminMiddleware(): void

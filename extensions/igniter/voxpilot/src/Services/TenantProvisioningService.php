@@ -9,6 +9,7 @@ use Igniter\User\Models\User;
 use Igniter\User\Models\UserRole;
 use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantMembership;
+use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +37,9 @@ class TenantProvisioningService
         $result = DB::transaction(function () use ($payload, $externalTenantId, &$ownerCreated) {
             $tenant = $this->createTenant($payload, $externalTenantId);
             [$adminUser, $ownerCreated] = $this->createAdminUser($payload, $tenant);
+            if ($ownerCreated) {
+                $this->applyOwnerLanguage($adminUser, $payload['locale'] ?? null);
+            }
             $this->createMembership($tenant, $adminUser);
             $location = $this->createLocation($payload, $tenant);
             // TastyIgniter shows a staff member only the orders of their assigned locations.
@@ -66,6 +70,17 @@ class TenantProvisioningService
         return $result;
     }
 
+    /**
+     * The owner's language (VoxPilot account language) as their TastyIgniter language: the admin
+     * locale and every staff email (invite, password reset) follow it. English when none is sent.
+     */
+    protected function applyOwnerLanguage(User $user, ?string $locale): void
+    {
+        $user->language_id = Locale::language(Locale::normalize($locale))->getKey();
+        $user->save();
+    }
+
+    /** TastyIgniter's staff invite, sent in the owner's language by LocalizedMailHelper. */
     protected function sendOwnerInvite(int $userId): bool
     {
         try {
