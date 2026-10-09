@@ -8,10 +8,14 @@
             @forelse($column['cards'] as $card)
                 <article class="vp-card {{ $card['phone'] && $card['minutes'] < 5 && !$column['done'] ? 'vp-card-new' : '' }}" data-vp-card data-source="{{ $card['phone'] ? 'phone' : 'other' }}">
                     <div class="vp-card-head">
-                        <div>
-                            <a class="vp-card-id" href="{{ admin_url('orders/edit/'.$card['id']) }}">#{{ $card['id'] }}</a>
-                            <div class="vp-card-customer">{{ $card['customer'] }}</div>
-                        </div>
+                        <button type="button" class="vp-card-open"
+                                data-request="onOpenOrder"
+                                data-request-data="order_id: {{ $card['id'] }}"
+                                data-request-success="vpOpenOrderModal()"
+                                aria-label="@lang('igniter.voxpilot::orders.details') #{{ $card['id'] }}">
+                            <span class="vp-card-id">#{{ $card['id'] }}</span>
+                            <span class="vp-card-customer">{{ $card['customer'] }}</span>
+                        </button>
                         <span class="vp-pill {{ !$column['done'] && $card['minutes'] >= 30 ? 'vp-pill-danger' : 'vp-pill-muted' }}" title="@lang('igniter.voxpilot::board.waiting')">
                             <i class="fa fa-clock"></i> {{ $card['minutes'] < 60 ? $card['minutes'].' min' : intdiv($card['minutes'], 60).' h' }}
                         </span>

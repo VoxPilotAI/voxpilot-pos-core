@@ -17,6 +17,8 @@
         </div>
     </div>
 
+    {!! $this->makePartial('ordermodalshell') !!}
+
     <div id="vp-board">
         {!! $this->makePartial('columns', ['columns' => $columns]) !!}
     </div>

@@ -26,19 +26,27 @@
             </div>
         </div>
 
+        {!! $this->makePartial('ordermodalshell') !!}
+
         <div class="vp-live-grid" id="vp-orders-body">
             @foreach($recentOrders as $meta)
                 @if($meta->order)
                     <article class="vp-ticket" data-order-id="{{ $meta->order->order_id }}" data-location-id="{{ $meta->location_id }}">
                         <div class="vp-ticket-head">
-                            <div>
-                                <a class="vp-ticket-id" href="{{ admin_url('orders/edit/'.$meta->order->order_id) }}">#{{ $meta->order->order_id }}</a>
-                                <div class="vp-ticket-customer">{{ trim($meta->order->first_name.' '.$meta->order->last_name) }}@if($meta->order->telephone) · {{ $meta->order->telephone }}@endif</div>
+                            <button type="button" class="vp-card-open"
+                                    data-request="onOpenOrder"
+                                    data-request-data="order_id: {{ $meta->order->order_id }}"
+                                    data-request-success="vpOpenOrderModal()">
+                                <span class="vp-ticket-id">#{{ $meta->order->order_id }}</span>
+                                <span class="vp-ticket-customer">{{ trim($meta->order->first_name.' '.$meta->order->last_name) }}@if($meta->order->telephone) · {{ $meta->order->telephone }}@endif</span>
+                            </button>
+                            <div class="vp-ticket-badges">
+                                {!! $this->makePartial('orderstatuspill', ['order' => $meta->order]) !!}
+                                <span class="vp-pill {{ $meta->order->order_type === 'delivery' ? 'vp-pill-primary' : 'vp-pill-success' }}">
+                                    <i class="fa {{ $meta->order->order_type === 'delivery' ? 'fa-motorcycle' : 'fa-bag-shopping' }}"></i>
+                                    {{ $meta->order->order_type === 'delivery' ? lang('igniter.voxpilot::live.delivery') : lang('igniter.voxpilot::live.pickup') }}
+                                </span>
                             </div>
-                            <span class="vp-pill {{ $meta->order->order_type === 'delivery' ? 'vp-pill-primary' : 'vp-pill-success' }}">
-                                <i class="fa {{ $meta->order->order_type === 'delivery' ? 'fa-motorcycle' : 'fa-bag-shopping' }}"></i>
-                                {{ $meta->order->order_type === 'delivery' ? lang('igniter.voxpilot::live.delivery') : lang('igniter.voxpilot::live.pickup') }}
-                            </span>
                         </div>
                         <ul class="vp-ticket-lines">
                             @foreach($meta->order->menus ?? [] as $menu)
@@ -49,6 +57,7 @@
                             <span class="vp-ticket-time" title="{{ $meta->created_at }}"><i class="fa fa-phone"></i> {{ $meta->created_at?->diffForHumans() }}</span>
                             <strong>{{ currency_format($meta->order->order_total) }}</strong>
                         </div>
+                        {!! $this->makePartial('ticketactions', ['order' => $meta->order]) !!}
                     </article>
                 @endif
             @endforeach
@@ -129,15 +138,23 @@ document.addEventListener('DOMContentLoaded', function () {
         card.setAttribute('data-order-id', data.order_id);
         card.setAttribute('data-location-id', data.location_id || '');
 
+        var orderId = parseInt(data.order_id, 10);
         var head = el('div', 'vp-ticket-head');
-        var who = el('div');
-        var link = el('a', 'vp-ticket-id', '#' + data.order_id);
-        link.href = window.location.origin + '/admin/orders/edit/' + encodeURIComponent(data.order_id);
-        who.appendChild(link);
+        var open = el('button', 'vp-card-open');
+        open.type = 'button';
+        open.setAttribute('data-request', 'onOpenOrder');
+        open.setAttribute('data-request-data', 'order_id: ' + orderId);
+        open.setAttribute('data-request-success', 'vpOpenOrderModal()');
+        open.appendChild(el('span', 'vp-ticket-id', '#' + orderId));
         var customer = data.customer ? data.customer.name + (data.customer.phone ? ' · ' + data.customer.phone : '') : '';
-        who.appendChild(el('div', 'vp-ticket-customer', customer));
-        head.appendChild(who);
-        head.appendChild(el('span', 'vp-pill ' + (delivery ? 'vp-pill-primary' : 'vp-pill-success'), delivery ? t.delivery : t.pickup));
+        open.appendChild(el('span', 'vp-ticket-customer', customer));
+        head.appendChild(open);
+        var badges = el('div', 'vp-ticket-badges');
+        var pill = el('span', 'vp-pill vp-pill-muted');
+        pill.id = 'vp-ticket-status-' + orderId;
+        badges.appendChild(pill);
+        badges.appendChild(el('span', 'vp-pill ' + (delivery ? 'vp-pill-primary' : 'vp-pill-success'), delivery ? t.delivery : t.pickup));
+        head.appendChild(badges);
         card.appendChild(head);
 
         var lines = el('ul', 'vp-ticket-lines');
@@ -156,11 +173,21 @@ document.addEventListener('DOMContentLoaded', function () {
         foot.appendChild(el('span', 'vp-ticket-time', t.just_now));
         foot.appendChild(el('strong', null, money.format(parseFloat(data.order_total) || 0)));
         card.appendChild(foot);
+        var actions = el('div', 'vp-ticket-actions');
+        actions.id = 'vp-ticket-actions-' + orderId;
+        card.appendChild(actions);
 
         grid.prepend(card);
+        // Status pill and Accept/Details come from the server, in the admin's language.
+        if (window.jQuery && jQuery.request) jQuery.request('onTicketExtras', { data: { order_id: orderId } });
         setTimeout(function () { card.classList.remove('vp-ticket-new'); }, 60000);
         applyLocationFilter();
     }
+
+    // Like a kitchen printer: keep chiming every 30 s while an order waits to be accepted.
+    setInterval(function () {
+        if (document.querySelector('#vp-orders-body .vp-ticket-accept')) chime();
+    }, 30000);
 
     function applyLocationFilter() {
         if (!locationFilter) return;

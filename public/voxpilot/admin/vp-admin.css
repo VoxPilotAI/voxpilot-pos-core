@@ -453,3 +453,47 @@ html[data-bs-theme] body.page-login .container-fluid, html[data-bs-theme] body.p
 .vp-auth-link { font-size: 13px; font-weight: 500; text-decoration: none; color: var(--vp-primary); }
 .vp-auth-note { margin: 0; font-size: 13px; line-height: 1.6; color: var(--vp-muted); text-align: center; }
 @media (max-width: 720px) { .vp-auth-brand { padding: 32px 20px; gap: 24px; } .vp-auth-ticket { display: none; } }
+
+/* Order quick actions (board, live orders) */
+.vp-card-open { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; border-radius: 8px; min-width: 0; }
+.vp-card-open:hover .vp-card-id, .vp-card-open:hover .vp-ticket-id { color: var(--vp-primary); }
+.vp-card-open:focus-visible { outline: 2px solid var(--vp-primary); outline-offset: 3px; }
+.vp-ticket-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.vp-ticket-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.vp-ticket-actions:empty { display: none; }
+.vp-ticket-actions .btn { min-height: 44px; }
+.vp-om-header { align-items: flex-start; border-bottom: 1px solid var(--vp-border); padding: 20px 24px; }
+.vp-om-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--vp-primary); }
+.vp-om-title { font-family: "Space Grotesk", Inter, sans-serif; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin: 2px 0 0; }
+.vp-om-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; color: var(--vp-fg); }
+.vp-om-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.vp-om-time { font-size: 13px; color: var(--vp-muted); }
+.vp-om-lines { margin: 14px 0 0; padding: 0; list-style: none; }
+.vp-om-lines li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--vp-border); font-size: 15px; }
+.vp-om-lines li em { display: block; font-style: normal; font-size: 12px; color: var(--vp-warning); }
+.vp-om-lines li span:last-child { color: var(--vp-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vp-om-lines .vp-om-total { font-family: "Space Grotesk", Inter, sans-serif; font-weight: 600; font-size: 18px; }
+.vp-om-lines .vp-om-total span:last-child { color: var(--vp-fg); }
+.vp-om-facts { margin: 14px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.vp-om-facts > div { padding: 10px 12px; border-radius: 12px; background: var(--vp-panel-2); }
+.vp-om-facts dt { font-size: 12px; font-weight: 500; color: var(--vp-muted); }
+.vp-om-facts dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+.vp-om-section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vp-muted); margin-bottom: 8px; }
+.vp-om-statuses { display: flex; flex-wrap: wrap; gap: 8px; }
+.vp-om-status { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--vp-border-strong); background: var(--vp-panel); color: var(--vp-fg); font-size: 14px; font-weight: 500; cursor: pointer; }
+.vp-om-status:hover { border-color: var(--vp-status); background: color-mix(in srgb, var(--vp-status) 10%, transparent); }
+.vp-om-status.active { border-color: var(--vp-status); background: color-mix(in srgb, var(--vp-status) 16%, transparent); font-weight: 700; cursor: default; opacity: 1; }
+.vp-om-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; border-top: 1px solid var(--vp-border); padding: 16px 24px; }
+.vp-om-secondary { display: flex; flex-wrap: wrap; gap: 8px; }
+.vp-om-cancel { color: var(--vp-danger) !important; }
+.vp-om-next { min-height: 44px; padding: 0 20px; }
+.vp-om-loading { display: grid; place-items: center; min-height: 160px; }
+@media (max-width: 576px) { .vp-om-footer > * { width: 100%; } .vp-om-next { width: 100%; } }
+
+/* Print ticket: only the order, black on white */
+@media print {
+    body * { visibility: hidden !important; }
+    #vp-order-modal .vp-print-ticket, #vp-order-modal .vp-print-ticket * { visibility: visible !important; color: #000 !important; background: #fff !important; }
+    #vp-order-modal .vp-print-ticket { position: fixed; inset: 0; padding: 12mm; font-size: 12pt; }
+    #vp-order-modal .vp-print-ticket .vp-pill { border: 1px solid #000; }
+}

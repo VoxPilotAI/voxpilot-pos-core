@@ -8,6 +8,7 @@ use Igniter\Admin\Classes\AdminController;
 use Igniter\Admin\Facades\Template;
 use Igniter\Admin\Models\Status;
 use Igniter\Cart\Models\Order;
+use Igniter\VoxPilot\Http\Controllers\Concerns\OrderQuickActions;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Illuminate\Support\Collection;
 
@@ -19,6 +20,8 @@ use Illuminate\Support\Collection;
  */
 class Board extends AdminController
 {
+    use OrderQuickActions;
+
     protected null|string|array $requiredPermissions = ['Admin.Orders'];
 
     /** Completed orders kept on the board (latest first). */
@@ -45,6 +48,12 @@ class Board extends AdminController
             $order->updateOrderStatus($statusId, ['staff_id' => $this->getUser()?->getKey()]);
         }
 
+        return ['#vp-board' => $this->makePartial('columns', ['columns' => $this->columns()])];
+    }
+
+    /** A status change from the order modal also re-renders the columns. */
+    protected function afterQuickStatusChange(Order $order): array
+    {
         return ['#vp-board' => $this->makePartial('columns', ['columns' => $this->columns()])];
     }
 
@@ -106,7 +115,7 @@ class Board extends AdminController
                 'id' => (int) $order->order_id,
                 'customer' => trim($order->first_name.' '.$order->last_name) ?: '—',
                 'phone' => isset($phoneIds[$order->order_id]),
-                'type' => (string) $order->order_type_name,
+                'type' => $order->order_type === 'delivery' ? lang('igniter.voxpilot::live.delivery') : lang('igniter.voxpilot::live.pickup'),
                 'total' => (float) $order->order_total,
                 'minutes' => (int) $order->created_at?->diffInMinutes(now()),
                 'lines' => $order->menus->map(fn ($m) => ['name' => (string) $m->name, 'quantity' => (int) $m->quantity])->all(),
@@ -115,11 +124,11 @@ class Board extends AdminController
 
             $columns[] = [
                 'id' => (int) $status->status_id,
-                'name' => (string) $status->status_name,
+                'name' => self::statusLabel($status->status_name),
                 'color' => (string) ($status->status_color ?: '#8a96b4'),
                 'done' => in_array((int) $status->status_id, $completed, true),
                 'next' => $next && !in_array((int) $status->status_id, $completed, true)
-                    ? ['id' => (int) $next->status_id, 'name' => (string) $next->status_name]
+                    ? ['id' => (int) $next->status_id, 'name' => self::statusLabel($next->status_name)]
                     : null,
                 'cards' => $cards,
             ];
