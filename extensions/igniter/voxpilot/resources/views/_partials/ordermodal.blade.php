@@ -81,6 +81,25 @@
     @endif
 
     @unless($isCanceled)
+        <div class="vp-om-section">
+            <div class="vp-om-section-title">@lang('igniter.voxpilot::orders.eta')</div>
+            <div class="vp-om-inline">
+                <div class="vp-segmented" role="group" aria-label="@lang('igniter.voxpilot::orders.eta')">
+                    @foreach($etaSteps as $minutes)
+                        <button type="button" data-request="onSetOrderEta" data-request-data="order_id: {{ $order->order_id }}, minutes: {{ $minutes }}">
+                            {{ lang('igniter.voxpilot::orders.eta_minutes', ['min' => $minutes]) }}
+                        </button>
+                    @endforeach
+                </div>
+                @if($readyAt)
+                    <span class="vp-pill vp-pill-primary"><i class="fa fa-stopwatch"></i> {{ lang('igniter.voxpilot::orders.eta_at', ['time' => $readyAt->format('H:i')]) }}</span>
+                @endif
+            </div>
+            @if($phone)
+                <p class="vp-om-time vp-om-help">@lang('igniter.voxpilot::orders.eta_help')</p>
+            @endif
+        </div>
+
         <div class="vp-om-tools">
             @unless($order->processed)
                 <div class="vp-om-section">

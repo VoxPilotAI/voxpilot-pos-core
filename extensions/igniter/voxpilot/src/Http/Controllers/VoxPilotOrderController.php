@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot\Http\Controllers;
 
 use Igniter\VoxPilot\Http\Requests\VoxPilotOrderRequest;
+use Igniter\VoxPilot\Http\Requests\VoxPilotQuoteRequest;
 use Igniter\VoxPilot\Services\OrderIngestionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
@@ -14,6 +15,22 @@ class VoxPilotOrderController extends Controller
     public function __construct(
         protected OrderIngestionService $ingestionService,
     ) {}
+
+    /** POST /api/voxpilot/orders/quote — the POS total for an order still being taken (SPEC-002). */
+    public function quote(VoxPilotQuoteRequest $request): JsonResponse
+    {
+        try {
+            $quote = $this->ingestionService->quote(
+                $request->validated(),
+                $request->attributes->get('voxpilot_tenant'),
+                $request->attributes->get('voxpilot_token'),
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $e->response ?? response()->json(['error' => ['code' => 'VALIDATION_ERROR', 'message' => $e->getMessage()]], 422);
+        }
+
+        return response()->json(['data' => $quote]);
+    }
 
     public function store(VoxPilotOrderRequest $request): JsonResponse
     {

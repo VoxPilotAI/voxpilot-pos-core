@@ -51,4 +51,8 @@ return [
     'manual_unknown_item' => 'Een van de artikelen staat niet op het menu van deze vestiging.',
     'manual_created' => 'Bestelling #:id aangemaakt.',
     'search_items' => 'Artikelen zoeken',
+    'eta' => 'Klaar over',
+    'eta_minutes' => ':min min',
+    'eta_at' => 'Klaar om :time',
+    'eta_help' => 'Als de klant tijdens het gesprek akkoord ging, krijgt hij deze tijd per sms of WhatsApp.',
 ];

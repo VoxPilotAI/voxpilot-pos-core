@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot\Jobs;
 
+use Igniter\Cart\Models\Order;
 use Igniter\VoxPilot\Models\Tenant;
+use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
 use Igniter\VoxPilot\Services\VoxPilotWebhook;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,6 +47,8 @@ class NotifyStatusChange implements ShouldQueue
             'comment' => $this->statusComment,
             'tenant_id' => $tenant->external_tenant_id,
             'timestamp' => now()->toIso8601String(),
+            // The kitchen's estimate, when the staff set one (pos-gateway SPEC-004).
+            'ready_at' => $this->readyAt(),
         ];
 
         $response = (new VoxPilotWebhook())->send($tenant, '/pos/webhooks/order-status', 'order.status_changed', $payload);
@@ -59,5 +63,12 @@ class NotifyStatusChange implements ShouldQueue
         }
 
         Log::info("[voxpilot] status webhook sent: order {$this->orderId} → {$this->statusName}");
+    }
+
+    protected function readyAt(): ?string
+    {
+        $order = Order::withoutGlobalScopes()->find($this->orderId);
+
+        return $order ? VoxPilotStatusNotifier::readyAt($order)?->toIso8601String() : null;
     }
 }

@@ -51,4 +51,8 @@ return [
     'manual_unknown_item' => 'One of the items is not on this location\'s menu.',
     'manual_created' => 'Order #:id created.',
     'search_items' => 'Search items',
+    'eta' => 'Ready in',
+    'eta_minutes' => ':min min',
+    'eta_at' => 'Ready at :time',
+    'eta_help' => 'If the customer agreed during the call, they get this time by SMS or WhatsApp.',
 ];

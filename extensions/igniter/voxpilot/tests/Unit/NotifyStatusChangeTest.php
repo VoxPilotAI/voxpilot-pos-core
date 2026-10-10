@@ -50,6 +50,24 @@ class NotifyStatusChangeTest extends TestCase
         });
     }
 
+    public function test_sends_the_kitchen_estimate_when_the_staff_set_one(): void
+    {
+        config(['voxpilot.hmac_shared_secret' => str_repeat('h', 64), 'voxpilot.api_url' => 'http://backend:3000']);
+        Http::fake(['*' => Http::response(['ok' => true])]);
+        $order = \Igniter\Cart\Models\Order::withoutGlobalScopes()->first();
+        if (!$order) {
+            $this->markTestSkipped('No order available');
+        }
+        $order->order_date = '2026-10-09';
+        $order->order_time = '19:45';
+        $order->order_time_is_asap = false;
+        $order->saveQuietly();
+
+        (new NotifyStatusChange((int) $order->order_id, $this->tenant()->id, 'ord_1', 'Pending', null))->handle();
+
+        Http::assertSent(fn (Request $request) => str_starts_with((string) $request['ready_at'], '2026-10-09T19:45:00'));
+    }
+
     public function test_uses_voxpilot_api_url_when_configured(): void
     {
         config(['voxpilot.hmac_shared_secret' => str_repeat('h', 64), 'voxpilot.api_url' => 'http://backend:3000']);

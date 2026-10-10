@@ -63,6 +63,52 @@ class OrderIngestionService
         return $result;
     }
 
+    /**
+     * The order total as the POS would charge it, without creating anything (pos-gateway SPEC-002):
+     * menu prices with the size option, the location's delivery fee, and the items the POS does not
+     * know or cannot sell now (so the assistant never confirms a price the POS would not charge).
+     */
+    public function quote(array $payload, Tenant $tenant, TenantApiToken $token): array
+    {
+        $locationId = $this->resolveLocationId($payload, $tenant, $token);
+        $matchResult = (new MenuMatcher($locationId))->matchItems($payload['items'] ?? []);
+        $deliveryFee = $this->computeDeliveryFee($payload, $locationId, $matchResult['matched']);
+
+        $location = Location::query()->withoutGlobalScopes()->find($locationId);
+        $markedToday = $location ? (new MenuAvailability())->unavailableToday($location) : [];
+        $unavailable = [];
+        $lines = [];
+        $subtotal = 0.0;
+        foreach ($matchResult['matched'] as $match) {
+            $menu = $match['menu'];
+            if (in_array((int) $menu->menu_id, $markedToday, true) || $menu->outOfStock($locationId) || !$menu->isAvailable()) {
+                $unavailable[] = ['name' => (string) $menu->menu_name, 'quantity' => (int) $match['quantity']];
+                continue;
+            }
+            $lines[] = [
+                'name' => (string) $match['name'],
+                'size' => $match['option']['matched'] ? $match['option']['name'] : null,
+                'size_matched' => (bool) $match['option']['matched'] || empty($match['item']['size']),
+                'quantity' => (int) $match['quantity'],
+                'unit_price' => round((float) $match['unit_price'], 2),
+                'line_total' => round((float) $match['line_total'], 2),
+                'price_mismatch' => (bool) $match['price_mismatch'],
+            ];
+            $subtotal += (float) $match['line_total'];
+        }
+
+        return [
+            'location_id' => $locationId,
+            'lines' => $lines,
+            'unmapped' => array_map(fn ($i) => ['name' => (string) ($i['name'] ?? '?'), 'quantity' => (int) ($i['quantity'] ?? 1)], $matchResult['unmapped']),
+            'unavailable' => $unavailable,
+            'subtotal' => round($subtotal, 2),
+            'delivery_fee' => round((float) $deliveryFee, 2),
+            'total' => round($subtotal + (float) $deliveryFee, 2),
+            'currency' => (string) rescue(fn () => app('currency')->getUserCurrency(), '', false),
+        ];
+    }
+
     protected function findExistingOrder(int $tenantId, string $externalOrderId): ?array
     {
         $metadata = VoxPilotOrderMetadata::where('tenant_id', $tenantId)

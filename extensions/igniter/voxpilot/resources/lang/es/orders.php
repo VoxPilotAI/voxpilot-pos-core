@@ -51,4 +51,8 @@ return [
     'manual_unknown_item' => 'Uno de los productos no está en el menú de este local.',
     'manual_created' => 'Pedido #:id creado.',
     'search_items' => 'Buscar productos',
+    'eta' => 'Listo en',
+    'eta_minutes' => ':min min',
+    'eta_at' => 'Listo a las :time',
+    'eta_help' => 'Si el cliente aceptó durante la llamada, recibe esta hora por SMS o WhatsApp.',
 ];

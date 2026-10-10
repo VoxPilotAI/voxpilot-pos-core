@@ -51,4 +51,8 @@ return [
     'manual_unknown_item' => 'Uno dei prodotti non è nel menu di questa sede.',
     'manual_created' => 'Ordine #:id creato.',
     'search_items' => 'Cerca prodotti',
+    'eta' => 'Pronto tra',
+    'eta_minutes' => ':min min',
+    'eta_at' => 'Pronto alle :time',
+    'eta_help' => 'Se il cliente ha accettato durante la chiamata, riceve questo orario via SMS o WhatsApp.',
 ];

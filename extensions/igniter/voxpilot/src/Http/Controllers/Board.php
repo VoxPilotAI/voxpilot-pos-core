@@ -11,6 +11,7 @@ use Igniter\Cart\Models\Order;
 use Igniter\VoxPilot\Http\Controllers\Concerns\OrderQuickActions;
 use Igniter\VoxPilot\Http\Controllers\Concerns\StoreControls;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
+use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
 use Illuminate\Support\Collection;
 
 /**
@@ -129,6 +130,7 @@ class Board extends AdminController
                 'minutes' => (int) $order->created_at?->diffInMinutes(now()),
                 'lines' => $order->menus->map(fn ($m) => ['name' => (string) $m->name, 'quantity' => (int) $m->quantity])->all(),
                 'comment' => (string) ($order->comment ?? ''),
+                'ready' => VoxPilotStatusNotifier::readyAt($order)?->format('H:i'),
             ])->values()->all();
 
             $columns[] = [

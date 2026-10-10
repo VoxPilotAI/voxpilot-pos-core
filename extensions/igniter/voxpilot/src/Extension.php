@@ -22,15 +22,14 @@ use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
 use Igniter\VoxPilot\Http\Middleware\StorefrontLanding;
 use Igniter\VoxPilot\Http\Middleware\VerifyHmacSignature;
 use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
-use Igniter\VoxPilot\Jobs\NotifyStatusChange;
 use Igniter\VoxPilot\Mail\LocalizedMailHelper;
 use Igniter\VoxPilot\Models\TenantMembership;
-use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Scopes\TenantLocationScope;
 use Igniter\VoxPilot\Scopes\TenantOrderScope;
 use Igniter\VoxPilot\Services\LanguagePreference;
 use Igniter\VoxPilot\Services\StoreChangeNotifier;
 use Igniter\VoxPilot\Services\TenantContext;
+use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
 use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
@@ -308,15 +307,8 @@ class Extension extends BaseExtension
     protected function registerOrderStatusListener(): void
     {
         Event::listen('igniter.cart.orderStatusAdded', function (Order $order, $statusHistory): void {
-            $metadata = VoxPilotOrderMetadata::where('order_id', $order->order_id)->first();
-            if (!$metadata) {
-                return;
-            }
-
-            NotifyStatusChange::dispatch(
-                $order->order_id,
-                $metadata->tenant_id,
-                $metadata->external_order_id,
+            VoxPilotStatusNotifier::orderChanged(
+                $order,
                 $statusHistory->status?->status_name ?? $statusHistory->status_for ?? 'unknown',
                 $statusHistory->comment ?? null,
             );

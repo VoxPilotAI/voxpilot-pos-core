@@ -10,6 +10,7 @@ use Igniter\PayRegister\Models\PaymentLog;
 use Igniter\User\Models\User;
 use Igniter\VoxPilot\Models\TenantMembership;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
+use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
 use Igniter\VoxPilot\Support\StatusLabel;
 use Illuminate\Support\Collection;
 
@@ -80,6 +81,33 @@ trait OrderQuickActions
         $log->response = [];
         $log->is_refundable = false;
         $log->save();
+    }
+
+    /** Kitchen estimates the staff pick from (minutes from now). */
+    public const ETA_STEPS = [10, 20, 30, 45, 60];
+
+    /**
+     * The kitchen's estimate: the order's time becomes now + minutes (TastyIgniter's order time, so
+     * the admin shows it too). A VoxPilot order tells VoxPilot right away, which tells the caller
+     * when they agreed to updates (pos-gateway SPEC-004).
+     */
+    public function onSetOrderEta(): array
+    {
+        $order = $this->findQuickOrder();
+        $minutes = (int) request()->input('minutes');
+        if (in_array($minutes, self::ETA_STEPS, true)) {
+            $ready = now()->addMinutes($minutes);
+            $order->order_date = $ready->toDateString();
+            $order->order_time = $ready->format('H:i');
+            $order->order_time_is_asap = false;
+            $order->save();
+            VoxPilotStatusNotifier::orderChanged($order->refresh());
+        }
+
+        return array_merge(
+            ['#vp-order-modal-content' => $this->renderOrderModal($order)],
+            $this->afterQuickStatusChange($order),
+        );
     }
 
     /** Assigns the order to one of the restaurant's staff (0 = nobody). */
@@ -205,6 +233,8 @@ trait OrderQuickActions
             'mapUrl' => $address ? 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($address) : null,
             'staff' => $order->order_type === 'delivery' ? $this->assignableStaff($order) : collect(),
             'paymentMethods' => self::PAYMENT_METHODS,
+            'etaSteps' => self::ETA_STEPS,
+            'readyAt' => VoxPilotStatusNotifier::readyAt($order),
             'phone' => VoxPilotOrderMetadata::where('order_id', $order->order_id)->exists(),
             'statuses' => $this->quickStatuses()->reject(fn ($s) => (int) $s->status_id === $canceled)->values(),
             'nextStatus' => $next ? $this->quickStatuses()->firstWhere('status_id', $next) : null,

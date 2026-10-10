@@ -45,6 +45,11 @@ class OrderModalActionsTest extends TestCase
                 return 'modal';
             }
 
+            protected function afterQuickStatusChange(Order $order): array
+            {
+                return [];
+            }
+
             public function last(): array
             {
                 return end($this->rendered);
@@ -133,6 +138,28 @@ class OrderModalActionsTest extends TestCase
         $this->assertSame(2, $history['count']);
         $this->assertEqualsWithDelta(20.0, $history['total'], 0.001);
         $this->assertCount(2, $history['recent']);
+    }
+
+    public function test_kitchen_estimate_sets_the_order_time_and_tells_voxpilot(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::parse('2026-10-09 19:20:00'));
+        $order = $this->order();
+        \Igniter\VoxPilot\Models\VoxPilotOrderMetadata::create([
+            'order_id' => $order->order_id, 'tenant_id' => $this->tenant->id, 'location_id' => $order->location_id,
+            'external_order_id' => 'ord_eta', 'source' => 'voice', 'idempotency_key' => 'ord_eta',
+        ]);
+
+        request()->merge(['order_id' => $order->order_id, 'minutes' => 20]);
+        $this->quickActions()->onSetOrderEta();
+        request()->merge(['minutes' => 17]);
+        $this->quickActions()->onSetOrderEta();
+
+        $order->refresh();
+        $this->assertFalse((bool) $order->order_time_is_asap);
+        $this->assertSame('19:40', \Igniter\VoxPilot\Services\VoxPilotStatusNotifier::readyAt($order)?->format('H:i'));
+        \Illuminate\Support\Facades\Queue::assertPushed(\Igniter\VoxPilot\Jobs\NotifyStatusChange::class, 1);
+        \Illuminate\Support\Carbon::setTestNow();
     }
 
     public function test_delivery_address_comes_from_the_voxpilot_comment_line(): void

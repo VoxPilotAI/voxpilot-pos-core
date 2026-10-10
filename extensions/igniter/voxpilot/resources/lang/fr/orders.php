@@ -51,4 +51,8 @@ return [
     'manual_unknown_item' => 'Un des articles n\'est pas au menu de cet établissement.',
     'manual_created' => 'Commande #:id créée.',
     'search_items' => 'Rechercher un article',
+    'eta' => 'Prêt dans',
+    'eta_minutes' => ':min min',
+    'eta_at' => 'Prêt à :time',
+    'eta_help' => 'Si le client a accepté pendant l\'appel, il reçoit cette heure par SMS ou WhatsApp.',
 ];

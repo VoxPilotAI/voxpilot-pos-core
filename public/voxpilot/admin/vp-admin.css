@@ -589,3 +589,4 @@ body.vp-kds .vp-card-action { min-height: 52px; font-size: 16px; }
 .vp-language-team { align-items: flex-start; min-height: 0; margin-top: 6px; padding-top: 10px; padding-bottom: 8px; border-top: 1px solid var(--vp-border); border-radius: 0; }
 .vp-language-team input { margin-top: 3px; flex-shrink: 0; }
 .vp-language-team small { display: block; font-size: 12px; color: var(--vp-muted); line-height: 1.4; }
+.vp-om-help { margin: 6px 0 0; }

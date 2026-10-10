@@ -16,6 +16,9 @@
                             <span class="vp-card-id">#{{ $card['id'] }}</span>
                             <span class="vp-card-customer">{{ $card['customer'] }}</span>
                         </button>
+                        @if($card['ready'] && !$column['done'])
+                            <span class="vp-pill vp-pill-primary" title="@lang('igniter.voxpilot::orders.eta')"><i class="fa fa-stopwatch"></i> {{ $card['ready'] }}</span>
+                        @endif
                         <span class="vp-pill {{ !$column['done'] && $card['minutes'] >= 30 ? 'vp-pill-danger' : 'vp-pill-muted' }}" title="@lang('igniter.voxpilot::board.waiting')">
                             <i class="fa fa-clock"></i> {{ $card['minutes'] < 60 ? $card['minutes'].' min' : intdiv($card['minutes'], 60).' h' }}
                         </span>

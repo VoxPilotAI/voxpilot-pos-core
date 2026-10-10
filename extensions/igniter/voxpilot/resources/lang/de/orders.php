@@ -51,4 +51,8 @@ return [
     'manual_unknown_item' => 'Einer der Artikel steht nicht auf der Speisekarte dieses Standorts.',
     'manual_created' => 'Bestellung #:id angelegt.',
     'search_items' => 'Artikel suchen',
+    'eta' => 'Fertig in',
+    'eta_minutes' => ':min Min.',
+    'eta_at' => 'Fertig um :time',
+    'eta_help' => 'Hat der Kunde im Anruf zugestimmt, bekommt er diese Uhrzeit per SMS oder WhatsApp.',
 ];
