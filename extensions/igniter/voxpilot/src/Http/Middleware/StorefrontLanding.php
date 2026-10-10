@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot\Http\Middleware;
 
 use Closure;
+use Igniter\Flame\Support\Facades\Igniter;
+use Igniter\VoxPilot\Support\HardcodedTexts;
 use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,7 +36,7 @@ class StorefrontLanding
         }
 
         if (!config('voxpilot.storefront_landing', true) || !$request->isMethod('GET')) {
-            return $next($request);
+            return $this->translated($next($request));
         }
 
         if (in_array($routeName, self::ADMIN_LOGIN_ROUTES, true)) {
@@ -45,7 +47,27 @@ class StorefrontLanding
             return $this->landing($request);
         }
 
-        return $next($request);
+        return $this->translated($next($request));
+    }
+
+    /**
+     * Storefront pages: TastyIgniter's theme hard-codes some English labels ("Close", "Toggle
+     * navigation"); they are swapped for the page's language. The admin does it in vp-admin.js.
+     */
+    protected function translated(mixed $response): mixed
+    {
+        if (Igniter::runningInAdmin() || !$response instanceof Response || app()->getLocale() === 'en'
+            || !str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
+            return $response;
+        }
+        $content = $response->getContent();
+        if (is_string($content) && $content !== '') {
+            // The theme layout also says lang="en" whatever the page language.
+            $content = preg_replace('/(<html\b[^>]*\blang=")en(")/', '${1}'.Locale::normalize(app()->getLocale()).'${2}', $content, 1);
+            $response->setContent(HardcodedTexts::translateHtml($content));
+        }
+
+        return $response;
     }
 
     protected function landing(Request $request): Response

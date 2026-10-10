@@ -37,4 +37,7 @@ return [
     'role_waiter' => 'Empregado de mesa',
     'role_delivery' => 'Estafeta',
     'customer_group_default' => 'Grupo predefinido',
+    'cookie_message' => 'Utilizamos cookies próprios e de terceiros para melhorar os nossos serviços. Ao continuar a navegar, aceita a sua utilização.',
+    'cookie_accept' => 'OK',
+    'cookie_more_info' => 'Mais informações',
 ];

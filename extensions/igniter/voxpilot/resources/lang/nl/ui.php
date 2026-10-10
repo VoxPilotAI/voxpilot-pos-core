@@ -1,0 +1,33 @@
+<?php
+
+// Texts of the admin's JavaScript (VoxPilot and TastyIgniter scripts), sent to vp-admin.js.
+return [
+    'theme_toggle' => 'Wisselen tussen lichte en donkere modus',
+    'this_month' => 'Deze maand',
+    'last_month' => 'Vorige maand',
+    'lifetime' => 'Altijd',
+    'custom_range' => 'Aangepast bereik',
+    'select_single' => 'Selecteer één item.',
+    'select_images' => 'Selecteer de afbeeldingen om in te voegen.',
+    'cancel_translation' => 'Weet u zeker dat u het bewerken van deze vertaling wilt annuleren?',
+    'map_center' => 'De kaart mist middelpuntcoördinaten: voer een adres in en sla op.',
+    'map_library' => 'De Google Maps-bibliotheek ontbreekt: geef de Maps-API-sleutel op in de algemene systeeminstellingen.',
+    'previous' => 'Vorige',
+    'next' => 'Volgende',
+    'toggle_dropdown' => 'Opties tonen',
+    'loading' => 'Laden…',
+    'toggle_navigation' => 'Navigatie tonen of verbergen',
+    'remove' => 'Verwijderen',
+    'sort' => 'Sorteren',
+    'filter' => 'Filteren',
+    'choose_color' => 'Kies uw kleur',
+    'resize' => 'Formaat wijzigen',
+    'choices_no_results' => 'Geen resultaten gevonden',
+    'choices_no_choices' => 'Geen keuzes beschikbaar',
+    'choices_select' => 'Druk om te selecteren',
+    'choices_unique' => 'Alleen unieke waarden kunnen worden toegevoegd',
+    'choices_custom_add' => 'Alleen waarden die aan bepaalde voorwaarden voldoen kunnen worden toegevoegd',
+    'choices_add' => 'Druk op Enter om ":value" toe te voegen',
+    'choices_max' => 'Er kunnen maar :count waarden worden toegevoegd',
+    'choices_remove' => 'Item verwijderen: :value',
+];

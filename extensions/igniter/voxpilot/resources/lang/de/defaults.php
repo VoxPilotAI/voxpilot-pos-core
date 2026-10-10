@@ -37,4 +37,7 @@ return [
     'role_waiter' => 'Servicekraft',
     'role_delivery' => 'Fahrer',
     'customer_group_default' => 'Standardgruppe',
+    'cookie_message' => 'Wir verwenden eigene Cookies und Cookies von Drittanbietern, um unsere Dienste zu verbessern. Wenn Sie weitersurfen, stimmen Sie ihrer Verwendung zu.',
+    'cookie_accept' => 'OK',
+    'cookie_more_info' => 'Weitere Informationen',
 ];

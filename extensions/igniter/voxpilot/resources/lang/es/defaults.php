@@ -37,4 +37,7 @@ return [
     'role_waiter' => 'Mesero',
     'role_delivery' => 'Repartidor',
     'customer_group_default' => 'Grupo predeterminado',
+    'cookie_message' => 'Usamos cookies propias y de terceros para mejorar nuestros servicios. Si sigues navegando, consideramos que aceptas su uso.',
+    'cookie_accept' => 'Aceptar',
+    'cookie_more_info' => 'Más información',
 ];

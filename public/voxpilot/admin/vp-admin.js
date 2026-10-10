@@ -1,4 +1,155 @@
 /*
+ * The admin in the staff member's language, also where TastyIgniter's scripts hard-code English:
+ * window.vpI18n (printed in <head> by the VoxPilot extension) maps those English texts to the
+ * admin's language. Dialogs, the date range picker (ranges, buttons, months and weekdays) and
+ * accessible labels ("Close") are swapped; month and day names come from the browser (Intl).
+ */
+(function () {
+    var i18n = window.vpI18n || { locale: 'en', strings: {} };
+    var strings = i18n.strings || {};
+    var t = function (text) {
+        return typeof text === 'string' && Object.prototype.hasOwnProperty.call(strings, text.trim()) ? strings[text.trim()] : text;
+    };
+    window.vpT = t;
+
+    var nativeConfirm = window.confirm, nativeAlert = window.alert;
+    window.confirm = function (message) { return nativeConfirm.call(window, t(message)); };
+    window.alert = function (message) { return nativeAlert.call(window, t(message)); };
+
+    /* moment ships English only here: build the admin's locale from Intl. */
+    function defineMomentLocale(locale) {
+        if (!window.moment || !window.Intl || locale === 'en' || moment.locales().indexOf(locale) !== -1) return;
+        try {
+            var names = function (options, count, at) {
+                var out = [];
+                for (var i = 0; i < count; i++) out.push(new Intl.DateTimeFormat(locale, options).format(at(i)));
+                return out;
+            };
+            var month = function (i) { return new Date(Date.UTC(2021, i, 15)); };
+            var day = function (i) { return new Date(Date.UTC(2021, 0, 3 + i)); }; // 3 Jan 2021 is a Sunday
+            var weekInfo = new Intl.Locale(locale).weekInfo || {};
+            moment.defineLocale(locale, {
+                months: names({ month: 'long', timeZone: 'UTC' }, 12, month),
+                monthsShort: names({ month: 'short', timeZone: 'UTC' }, 12, month).map(function (m) { return m.replace(/\.$/, ''); }),
+                weekdays: names({ weekday: 'long', timeZone: 'UTC' }, 7, day),
+                weekdaysShort: names({ weekday: 'short', timeZone: 'UTC' }, 7, day),
+                weekdaysMin: names({ weekday: 'narrow', timeZone: 'UTC' }, 7, day),
+                week: { dow: (weekInfo.firstDay || 1) % 7, doy: 4 }
+            });
+        } catch (e) { /* keep English dates */ }
+        moment.locale('en');
+    }
+
+    function patchDateRangePicker() {
+        var $ = window.jQuery;
+        if (!$ || !$.fn.daterangepicker || $.fn.daterangepicker.vpTranslated) return;
+        var original = $.fn.daterangepicker;
+        $.fn.daterangepicker = function (options, callback) {
+            options = $.extend({}, options);
+            if (options.ranges) {
+                var ranges = {};
+                Object.keys(options.ranges).forEach(function (label) { ranges[t(label)] = options.ranges[label]; });
+                options.ranges = ranges;
+            }
+            var data = window.moment ? moment.localeData(i18n.locale) : null;
+            options.locale = $.extend({
+                applyLabel: t('Apply'),
+                cancelLabel: t('Cancel'),
+                customRangeLabel: t('Custom Range'),
+                daysOfWeek: data ? data.weekdaysMin() : undefined,
+                monthNames: data ? data.monthsShort() : undefined,
+                firstDay: data ? data.firstDayOfWeek() : undefined
+            }, options.locale);
+            return original.call(this, options, callback);
+        };
+        $.fn.daterangepicker.vpTranslated = true;
+        Object.keys(original).forEach(function (key) { $.fn.daterangepicker[key] = original[key]; });
+    }
+
+    var ATTRIBUTES = ['aria-label', 'title', 'placeholder'];
+    function translateAttributes(root) {
+        if (!root || !root.querySelectorAll) return;
+        // Screen-reader-only texts ("Toggle Dropdown", "Loading...") hard-coded in TastyIgniter's views.
+        var hidden = root.matches && root.matches('.visually-hidden, .sr-only') ? [root] : [];
+        hidden.concat(Array.prototype.slice.call(root.querySelectorAll('.visually-hidden, .sr-only'))).forEach(function (el) {
+            if (el.children.length === 0 && t(el.textContent) !== el.textContent) el.textContent = t(el.textContent);
+        });
+        var nodes = [root].concat(Array.prototype.slice.call(root.querySelectorAll('[aria-label],[title],[placeholder]')));
+        nodes.forEach(function (el) {
+            if (!el.getAttribute) return;
+            ATTRIBUTES.forEach(function (name) {
+                var value = el.getAttribute(name);
+                var translated = value && translateLabel(value);
+                if (translated && translated !== value) el.setAttribute(name, translated);
+            });
+            // Choices.js hard-codes the text of its remove buttons.
+            if (el.hasAttribute && el.hasAttribute('data-button') && el.textContent === 'Remove item' && i18n.choices) {
+                el.textContent = i18n.choices.remove.replace(/:\s*:value|:value/, '').trim();
+            }
+        });
+    }
+
+    /* Exact texts, then labels built around a value ("Remove item: 'Pizza'"). */
+    function translateLabel(value) {
+        if (t(value) !== value) return t(value);
+        var removeItem = /^Remove item: (.*)$/.exec(value);
+        if (removeItem && i18n.choices) return i18n.choices.remove.replace(':value', removeItem[1]);
+        return value;
+    }
+
+    /* TastyIgniter's select lists (Choices.js) read SelectList.DEFAULTS when they start. */
+    function patchSelectList() {
+        var $ = window.jQuery, c = i18n.choices;
+        if (!$ || !c || !$.fn.selectList || !$.fn.selectList.Constructor) return;
+        var esc = function (value) { return String(value).replace(/[&<>"']/g, function (ch) { return '&#' + ch.charCodeAt(0) + ';'; }); };
+        $.extend($.fn.selectList.Constructor.DEFAULTS, {
+            loadingText: t('Loading...'),
+            noResultsText: c.no_results,
+            noChoicesText: c.no_choices,
+            itemSelectText: c.select,
+            uniqueItemText: c.unique,
+            customAddItemText: c.custom_add,
+            addItemText: function (value) { return c.add.replace(':value', esc(value)); },
+            maxItemText: function (count) { return c.max.replace(':count', count); },
+            removeItemLabelText: function (value) { return c.remove.replace(':value', value); }
+        });
+    }
+
+    /* The rich text editor (Summernote) has its own language files, published with TastyIgniter. */
+    function localizeRichEditor() {
+        var $ = window.jQuery;
+        var tag = { es: 'es-ES', de: 'de-DE', fr: 'fr-FR', it: 'it-IT', pt: 'pt-PT', nl: 'nl-NL' }[i18n.locale];
+        if (!$ || !$.summernote || !tag) return;
+        if ($.fn.richEditor && $.fn.richEditor.Constructor) $.fn.richEditor.Constructor.DEFAULTS.lang = tag;
+        // Loaded before the editors start (this script runs while the page is still parsing).
+        if (!$.summernote.lang[tag] && document.readyState === 'loading') {
+            document.write('<script src="/vendor/igniter/js/locales/summernote/summernote-' + tag + '.min.js"><\/script>');
+        }
+    }
+
+    defineMomentLocale(i18n.locale);
+    if (window.moment && moment.locales().indexOf(i18n.locale) !== -1) moment.locale(i18n.locale);
+    patchDateRangePicker();
+    patchSelectList();
+    localizeRichEditor();
+
+    function init() {
+        translateAttributes(document.body);
+        if (window.MutationObserver) {
+            new MutationObserver(function (changes) {
+                changes.forEach(function (change) {
+                    if (change.type === 'attributes') translateAttributes(change.target);
+                    else change.addedNodes.forEach(translateAttributes);
+                });
+            }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ATTRIBUTES });
+        }
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
+
+/*
  * VoxPilot POS admin: light/dark toggle in the header and the VoxPilot logo. The theme itself is
  * applied before first paint by the inline script the VoxPilot extension adds to <head>; this file
  * only adds the toggle and keeps the choice (localStorage "vp-theme": "light" | "dark").
@@ -34,7 +185,7 @@
         var button = document.createElement('button');
         button.type = 'button';
         button.className = 'nav-link border-0 bg-transparent';
-        button.setAttribute('aria-label', 'Switch light and dark mode');
+        button.setAttribute('aria-label', window.vpT ? window.vpT('Switch light and dark mode') : 'Switch light and dark mode');
         button.innerHTML =
             '<svg class="vp-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>' +
             '<svg class="vp-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';

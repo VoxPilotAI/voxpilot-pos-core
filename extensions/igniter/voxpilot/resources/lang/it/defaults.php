@@ -37,4 +37,7 @@ return [
     'role_waiter' => 'Cameriere',
     'role_delivery' => 'Fattorino',
     'customer_group_default' => 'Gruppo predefinito',
+    'cookie_message' => 'Utilizziamo cookie propri e di terze parti per migliorare i nostri servizi. Continuando la navigazione ne accetti l’uso.',
+    'cookie_accept' => 'OK',
+    'cookie_more_info' => 'Maggiori informazioni',
 ];

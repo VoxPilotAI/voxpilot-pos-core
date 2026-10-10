@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot\Support;
 
 /**
- * TastyIgniter seeds statuses, payment methods, staff groups/roles and a customer group with English
- * names that every restaurant shares. In the admin they are shown in the admin's language while they
- * keep their seeded name; a name a restaurant typed itself is shown as it is.
+ * TastyIgniter seeds statuses, payment methods, staff groups/roles, a customer group and theme texts
+ * with English values that every restaurant shares. They are shown in the page's language while they
+ * keep their seeded value; a name a restaurant typed itself is shown as it is.
  */
 final class DefaultLabels
 {
@@ -36,6 +36,12 @@ final class DefaultLabels
         'user_group' => ['Owners' => 'group_owners', 'Managers' => 'group_managers', 'Waiters' => 'group_waiters', 'Delivery' => 'group_delivery'],
         'user_role' => ['Owner' => 'role_owner', 'Manager' => 'role_manager', 'Waiter' => 'role_waiter', 'Delivery' => 'role_delivery'],
         'customer_group' => ['Default group' => 'customer_group_default'],
+        // Storefront theme settings left at their defaults (the cookie banner).
+        'theme' => [
+            'We use own and third party cookies to improve our services. If you continue to browse, consider accepting its use' => 'cookie_message',
+            'OK' => 'cookie_accept',
+            'More Information' => 'cookie_more_info',
+        ],
     ];
 
     /**
@@ -46,6 +52,9 @@ final class DefaultLabels
     {
         if (!is_string($value) || $value === '') {
             return null;
+        }
+        if ($key = self::MAP[$kind][trim($value)] ?? null) {
+            return lang('igniter.voxpilot::defaults.'.$key);
         }
         $parts = explode(', ', $value);
         $changed = false;

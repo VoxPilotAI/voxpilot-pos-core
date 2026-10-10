@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot\Tests\Unit;
 
 use Igniter\VoxPilot\Support\DefaultLabels;
+use Igniter\VoxPilot\Support\HardcodedTexts;
 use Tests\TestCase;
 
 /**
@@ -61,5 +62,19 @@ class TranslationsCompleteTest extends TestCase
         $this->assertSame('Pago contra entrega', DefaultLabels::translate('payment_name', 'Cash On Delivery'));
         $this->assertNull(DefaultLabels::translate('status_order', 'Listo en barra'));
         $this->assertNull(DefaultLabels::translate('payment_name', 'PayPal Express'));
+        $this->assertStringStartsWith('Usamos cookies', (string) DefaultLabels::translate('theme', 'We use own and third party cookies to improve our services. If you continue to browse, consider accepting its use'));
+    }
+
+    public function test_hard_coded_english_labels_in_tastyigniter_markup_are_translated(): void
+    {
+        app()->setLocale('de');
+
+        $html = HardcodedTexts::translateHtml('<button aria-label="Close"></button><span class="visually-hidden">Toggle Dropdown</span><b title="Sort">x</b><i title="Mine">y</i>');
+
+        $this->assertStringContainsString('aria-label="'.e(lang('igniter::admin.button_close')).'"', $html);
+        $this->assertStringContainsString('<span class="visually-hidden">Optionen anzeigen</span>', $html);
+        $this->assertStringContainsString('title="Sortieren"', $html);
+        $this->assertStringContainsString('title="Mine"', $html);
+        $this->assertArrayHasKey('Last 7 Days', HardcodedTexts::all());
     }
 }

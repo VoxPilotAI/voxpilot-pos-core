@@ -37,4 +37,7 @@ return [
     'role_waiter' => 'Serveur',
     'role_delivery' => 'Livreur',
     'customer_group_default' => 'Groupe par défaut',
+    'cookie_message' => 'Nous utilisons des cookies propres et tiers pour améliorer nos services. En poursuivant votre navigation, vous acceptez leur utilisation.',
+    'cookie_accept' => 'OK',
+    'cookie_more_info' => 'En savoir plus',
 ];

@@ -1,0 +1,33 @@
+<?php
+
+// Texts of the admin's JavaScript (VoxPilot and TastyIgniter scripts), sent to vp-admin.js.
+return [
+    'theme_toggle' => 'Switch light and dark mode',
+    'this_month' => 'This Month',
+    'last_month' => 'Last Month',
+    'lifetime' => 'Lifetime',
+    'custom_range' => 'Custom Range',
+    'select_single' => 'Please select a single item.',
+    'select_images' => 'Please select image(s) to insert.',
+    'cancel_translation' => 'Are you sure you want to cancel editing this translation?',
+    'map_center' => 'Map is missing center coordinates, please enter an address then click save.',
+    'map_library' => 'Missing Google Maps Javascript Library, please provide your maps api key on the general system settings page.',
+    'previous' => 'Previous',
+    'next' => 'Next',
+    'toggle_dropdown' => 'Toggle Dropdown',
+    'loading' => 'Loading...',
+    'toggle_navigation' => 'Toggle navigation',
+    'remove' => 'Remove',
+    'sort' => 'Sort',
+    'filter' => 'Filter',
+    'choose_color' => 'Choose your color',
+    'resize' => 'Resize',
+    'choices_no_results' => 'No results found',
+    'choices_no_choices' => 'No choices to choose from',
+    'choices_select' => 'Press to select',
+    'choices_unique' => 'Only unique values can be added',
+    'choices_custom_add' => 'Only values matching specific conditions can be added',
+    'choices_add' => 'Press Enter to add ":value"',
+    'choices_max' => 'Only :count values can be added',
+    'choices_remove' => 'Remove item: :value',
+];

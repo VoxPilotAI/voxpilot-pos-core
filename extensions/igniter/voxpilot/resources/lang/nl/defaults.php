@@ -37,4 +37,7 @@ return [
     'role_waiter' => 'Ober',
     'role_delivery' => 'Bezorger',
     'customer_group_default' => 'Standaardgroep',
+    'cookie_message' => 'Wij gebruiken eigen cookies en cookies van derden om onze diensten te verbeteren. Als u verder surft, gaat u akkoord met het gebruik ervan.',
+    'cookie_accept' => 'OK',
+    'cookie_more_info' => 'Meer informatie',
 ];

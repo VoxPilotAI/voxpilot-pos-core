@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot;
 
 use Igniter\Admin\Facades\Template;
-use Igniter\Flame\Support\Facades\Igniter;
 use Igniter\User\Facades\AdminAuth;
 use Igniter\User\Models\Customer;
 use Igniter\User\Models\User;
@@ -40,6 +39,7 @@ use Igniter\VoxPilot\Services\StoreChangeNotifier;
 use Igniter\VoxPilot\Services\TenantContext;
 use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
 use Igniter\VoxPilot\Support\DefaultLabels;
+use Igniter\VoxPilot\Support\HardcodedTexts;
 use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\DB;
@@ -181,7 +181,7 @@ class Extension extends BaseExtension
      */
     protected function registerBranding(): void
     {
-        foreach (['igniter.user', 'igniter.cart', 'igniter.reservation', 'igniter.local', 'igniter.frontend'] as $namespace) {
+        foreach (['igniter.user', 'igniter.cart', 'igniter.reservation', 'igniter.local', 'igniter.frontend', 'igniter-orange'] as $namespace) {
             View::prependNamespace($namespace, __DIR__.'/../resources/views/overrides/'.$namespace);
         }
 
@@ -198,6 +198,10 @@ class Extension extends BaseExtension
      */
     protected function registerAdminSkin(): void
     {
+        // The admin layout says lang="en" whatever the language; the scripts get their texts here.
+        Template::registerHook('startHead', fn () => '<script>document.documentElement.lang='.json_encode(Locale::normalize(app()->getLocale()))
+            .';window.vpI18n='.json_encode(['locale' => Locale::normalize(app()->getLocale()), 'strings' => HardcodedTexts::all(), 'choices' => HardcodedTexts::selectListTexts()], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP).';</script>');
+
         Template::registerHook('startHead', fn () => '<script>(function(){var t=null;try{t=localStorage.getItem("vp-theme")}catch(e){}'
             .'if(t!=="light"&&t!=="dark"){t=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}'
             .'document.documentElement.setAttribute("data-bs-theme",t)})();</script>'
@@ -292,14 +296,15 @@ class Extension extends BaseExtension
 
     /**
      * Seeded English names (statuses, payment methods, staff groups and roles, customer group) are
-     * shown in the admin's language. Admin screens only: the API and the jobs that tell VoxPilot about
-     * an order read the stored names.
+     * shown in the page's language (admin and storefront). Not in the API nor in queued jobs, which
+     * tell VoxPilot about an order by its stored status name.
      */
     protected function registerDefaultLabels(): void
     {
         $translate = function ($model, array $attributes): void {
             $model->bindEvent('model.getAttribute', function (string $key, $value) use ($model, $attributes) {
-                if (!isset($attributes[$key]) || !Igniter::runningInAdmin()) {
+                // Screens only: the API and queued jobs (status events to VoxPilot) read stored names.
+                if (!isset($attributes[$key]) || app()->runningInConsole() || request()->is('api/*')) {
                     return null;
                 }
                 $kind = $attributes[$key] === 'status' ? 'status_'.($model->getAttributes()['status_for'] ?? 'order') : $attributes[$key];
