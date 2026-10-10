@@ -24,7 +24,7 @@ class VoxPilotStatusNotifier
             (int) $order->order_id,
             (int) $metadata->tenant_id,
             (string) $metadata->external_order_id,
-            $statusName ?? (string) ($order->status?->status_name ?? 'unknown'),
+            $statusName ?? (string) ($order->status?->getAttributes()['status_name'] ?? 'unknown'),
             $comment,
         );
     }

@@ -1,0 +1,52 @@
+<?php
+
+// VoxPilot POS translation of TastyIgniter's English strings (igniter.pages::default). Regenerate with
+// the i18n script rather than editing by hand when TastyIgniter adds strings.
+
+return array (
+  'column_language' => 'Taal',
+  'column_preview' => 'Voorbeeld',
+  'column_status' => 'Status',
+  'help_layout' => 'De indeling die wordt gebruikt om deze pagina weer te geven',
+  'help_navigation' => 'Selecteer waar een link naar deze pagina moet worden getoond',
+  'help_permalink' => 'Gebruik ALLEEN alfanumerieke kleine letters, underscores of streepjes en zorg ervoor dat deze UNIEK is GLOBAAL.',
+  'label_content' => 'Inhoud',
+  'label_heading' => 'Kop',
+  'label_language' => 'Taal',
+  'label_layout' => 'Indeling',
+  'label_meta_description' => 'Meta-omschrijving',
+  'label_meta_keywords' => 'Meta-trefwoorden',
+  'label_navigation' => 'Verbergen in navigatie',
+  'label_permalink_id' => 'Permalink-ID',
+  'label_permalink_slug' => 'Permalink-slug',
+  'label_status' => 'Status',
+  'label_title' => 'Titel',
+  'menu' => 
+  array (
+    'button_menus' => '<i class="fa fa-sitemap"></i>&nbsp;Statische menu\'s',
+    'help_menu_code' => 'Geef een code op van het menu dat het onderdeel moet weergeven.',
+    'help_reference' => 'Selecteer de pagina die voor het URL-adres moet worden gebruikt.',
+    'label_attributes' => 'Extra HTML-attributen',
+    'label_code' => 'Code',
+    'label_description' => 'Beschrijving',
+    'label_menu_code' => 'Menucode',
+    'label_parent_id' => 'Hoofdmenu-item',
+    'label_reference' => 'Verwijzing',
+    'label_theme' => 'Thema',
+    'label_title' => 'Titel',
+    'label_type' => 'Type',
+    'label_url' => 'URL',
+    'text_all_static_pages' => 'Alle statische pagina\'s',
+    'text_menu_items' => 'Menu-items',
+    'text_static_page' => 'Statische pagina',
+  ),
+  'text_edit_title' => 'Pagina: bijwerken',
+  'text_empty' => 'Er zijn geen pagina\'s beschikbaar.',
+  'text_filter_search' => 'Zoeken op naam.',
+  'text_form_name' => 'Pagina',
+  'text_new_title' => 'Pagina: nieuw',
+  'text_preview_title' => 'Pagina: voorbeeld',
+  'text_tab_edit' => 'Bewerken',
+  'text_tab_manage' => 'Beheren',
+  'text_title' => 'Statische pagina\'s',
+);

@@ -367,7 +367,7 @@ class OrderIngestionService
         $sub = new OrderTotal();
         $sub->order_id = $order->order_id;
         $sub->code = 'subtotal';
-        $sub->title = 'Sub Total';
+        $sub->title = lang('igniter.cart::default.text_sub_total');
         $sub->value = $subtotal;
         $sub->priority = 0;
         $sub->is_summable = false;
@@ -377,7 +377,7 @@ class OrderIngestionService
             $fee = new OrderTotal();
             $fee->order_id = $order->order_id;
             $fee->code = 'delivery';
-            $fee->title = 'Delivery';
+            $fee->title = lang('igniter.cart::default.orders.text_delivery');
             $fee->value = $deliveryFee;
             $fee->priority = 100;
             $fee->is_summable = true;
@@ -390,7 +390,7 @@ class OrderIngestionService
         $totalRecord = new OrderTotal();
         $totalRecord->order_id = $order->order_id;
         $totalRecord->code = 'total';
-        $totalRecord->title = 'Order Total';
+        $totalRecord->title = lang('igniter.cart::default.text_order_total');
         $totalRecord->value = $order->order_total ?? 0;
         $totalRecord->priority = 999;
         $totalRecord->is_summable = false;

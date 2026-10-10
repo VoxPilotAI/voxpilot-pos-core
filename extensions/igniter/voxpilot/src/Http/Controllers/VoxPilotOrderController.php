@@ -115,7 +115,7 @@ class VoxPilotOrderController extends Controller
             return response()->json(['error' => [
                 'code' => OrderChangeService::LOCKED,
                 'message' => $order->isCanceled() ? 'This order is already canceled.' : 'The kitchen already accepted this order (or it is paid).',
-                'status' => $order->status?->status_name,
+                'status' => ($order->status?->getAttributes()['status_name'] ?? null),
             ]], 409);
         }
 
@@ -126,7 +126,7 @@ class VoxPilotOrderController extends Controller
     {
         return [
             'order_id' => $order->order_id,
-            'status' => $order->status?->status_name,
+            'status' => ($order->status?->getAttributes()['status_name'] ?? null),
             'order_total' => (float) $order->order_total,
             'items' => $order->menus->map(fn ($m) => ['name' => $m->name, 'quantity' => (int) $m->quantity, 'subtotal' => (float) $m->subtotal])->values(),
         ];
@@ -158,7 +158,7 @@ class VoxPilotOrderController extends Controller
         $data = [
             'order_id' => $order->order_id,
             'external_order_id' => $result['metadata']->external_order_id,
-            'status' => $order->status?->status_name ?? 'pending',
+            'status' => ($order->status?->getAttributes()['status_name'] ?? null) ?? 'pending',
             'location' => [
                 'id' => $order->location_id,
                 'name' => $order->location?->location_name ?? '',

@@ -148,7 +148,7 @@ trait OrderQuickActions
         if ($id) {
             return $id;
         }
-        $status = $this->quickStatuses()->first(fn ($s) => strcasecmp((string) $s->status_name, 'Canceled') === 0);
+        $status = $this->quickStatuses()->first(fn ($s) => strcasecmp((string) ($s->getAttributes()['status_name'] ?? ''), 'Canceled') === 0);
 
         return $status ? (int) $status->status_id : null;
     }

@@ -81,7 +81,7 @@ class Board extends AdminController
             ->where('status_for', 'order')
             ->orderBy('status_id')
             ->get()
-            ->reject(fn ($s) => $canceled ? (int) $s->status_id === $canceled : strcasecmp((string) $s->status_name, 'Canceled') === 0)
+            ->reject(fn ($s) => $canceled ? (int) $s->status_id === $canceled : strcasecmp((string) ($s->getAttributes()['status_name'] ?? ''), 'Canceled') === 0)
             ->values();
     }
 
@@ -92,7 +92,7 @@ class Board extends AdminController
             return $completed;
         }
 
-        return $statuses->filter(fn ($s) => strcasecmp((string) $s->status_name, 'Completed') === 0)
+        return $statuses->filter(fn ($s) => strcasecmp((string) ($s->getAttributes()['status_name'] ?? ''), 'Completed') === 0)
             ->pluck('status_id')->map(fn ($id) => (int) $id)->all();
     }
 

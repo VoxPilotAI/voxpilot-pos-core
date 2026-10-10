@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot;
 
 use Igniter\Admin\Facades\Template;
+use Igniter\Flame\Support\Facades\Igniter;
 use Igniter\User\Facades\AdminAuth;
 use Igniter\User\Models\Customer;
 use Igniter\User\Models\User;
@@ -38,6 +39,7 @@ use Igniter\VoxPilot\Services\LanguagePreference;
 use Igniter\VoxPilot\Services\StoreChangeNotifier;
 use Igniter\VoxPilot\Services\TenantContext;
 use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
+use Igniter\VoxPilot\Support\DefaultLabels;
 use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +70,7 @@ class Extension extends BaseExtension
         $this->registerAdminMiddleware();
         $this->registerBranding();
         $this->registerTenantScopes();
+        $this->registerDefaultLabels();
         $this->registerApiRoutes();
         $this->registerProvisioningRoutes();
         $this->registerOAuthRoutes();
@@ -172,13 +175,15 @@ class Extension extends BaseExtension
     }
 
     /**
-     * VoxPilot POS branding: the storefront landing page, and the owner emails (staff invite and
-     * admin password reset) rewritten with translated VoxPilot copy. The overrides resolve before
-     * the igniter.user views, so TastyIgniter keeps sending them through its own code paths.
+     * VoxPilot POS branding: the storefront landing page, and TastyIgniter's emails (staff invite,
+     * password resets, order and reservation emails…) rewritten with translated copy. The overrides
+     * resolve before the extensions' own views, so TastyIgniter keeps sending them through its code.
      */
     protected function registerBranding(): void
     {
-        View::prependNamespace('igniter.user', __DIR__.'/../resources/views/overrides/igniter.user');
+        foreach (['igniter.user', 'igniter.cart', 'igniter.reservation', 'igniter.local', 'igniter.frontend'] as $namespace) {
+            View::prependNamespace($namespace, __DIR__.'/../resources/views/overrides/'.$namespace);
+        }
 
         $this->app['router']->pushMiddlewareToGroup('igniter', StorefrontLanding::class);
 
@@ -283,6 +288,47 @@ class Extension extends BaseExtension
     {
         $router = $this->app['router'];
         $router->pushMiddlewareToGroup('igniter', ResolveTenantForAdmin::class);
+    }
+
+    /**
+     * Seeded English names (statuses, payment methods, staff groups and roles, customer group) are
+     * shown in the admin's language. Admin screens only: the API and the jobs that tell VoxPilot about
+     * an order read the stored names.
+     */
+    protected function registerDefaultLabels(): void
+    {
+        $translate = function ($model, array $attributes): void {
+            $model->bindEvent('model.getAttribute', function (string $key, $value) use ($model, $attributes) {
+                if (!isset($attributes[$key]) || !Igniter::runningInAdmin()) {
+                    return null;
+                }
+                $kind = $attributes[$key] === 'status' ? 'status_'.($model->getAttributes()['status_for'] ?? 'order') : $attributes[$key];
+
+                return DefaultLabels::translate($kind, $value);
+            });
+        };
+        \Igniter\Admin\Models\Status::extend(fn ($m) => $translate($m, ['status_name' => 'status', 'status_comment' => 'status_comment']));
+        \Igniter\User\Models\UserGroup::extend(fn ($m) => $translate($m, ['user_group_name' => 'user_group']));
+        \Igniter\User\Models\UserRole::extend(fn ($m) => $translate($m, ['name' => 'user_role']));
+        \Igniter\User\Models\CustomerGroup::extend(fn ($m) => $translate($m, ['group_name' => 'customer_group']));
+        // List columns that select a related name in SQL arrive as an alias on the listed record.
+        Order::extend(fn ($m) => $translate($m, ['status_name' => 'status_order', 'payment' => 'payment_name', 'assignee_group_name' => 'user_group']));
+        User::extend(fn ($m) => $translate($m, ['staff_role_name' => 'user_role', 'user_group_name' => 'user_group']));
+        Customer::extend(fn ($m) => $translate($m, ['customer_group' => 'customer_group']));
+        if (class_exists(\Igniter\Reservation\Models\Reservation::class)) {
+            \Igniter\Reservation\Models\Reservation::extend(fn ($m) => $translate($m, ['status_name' => 'status_reservation']));
+        }
+        // The status dropdown of the order and reservation lists lists the statuses by name.
+        Event::listen('admin.list.extendColumns', function ($list): void {
+            foreach ($list->getColumns() as $column) {
+                if ($column->type === 'partial' && $column->path === 'statuses/status_column') {
+                    $column->path = 'igniter.voxpilot::_partials.statuscolumn';
+                }
+            }
+        });
+        if (class_exists(\Igniter\PayRegister\Models\Payment::class)) {
+            \Igniter\PayRegister\Models\Payment::extend(fn ($m) => $translate($m, ['name' => 'payment_name', 'description' => 'payment_description']));
+        }
     }
 
     /** Restaurant data that TastyIgniter ties to locations, by the relation it uses. */
@@ -404,7 +450,7 @@ class Extension extends BaseExtension
         Event::listen('igniter.cart.orderStatusAdded', function (Order $order, $statusHistory): void {
             VoxPilotStatusNotifier::orderChanged(
                 $order,
-                $statusHistory->status?->status_name ?? $statusHistory->status_for ?? 'unknown',
+                ($statusHistory->status?->getAttributes()['status_name'] ?? null) ?? $statusHistory->status_for ?? 'unknown',
                 $statusHistory->comment ?? null,
             );
         });
