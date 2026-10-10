@@ -6,8 +6,10 @@ namespace Igniter\VoxPilot;
 
 use Igniter\Admin\Facades\Template;
 use Igniter\User\Facades\AdminAuth;
+use Igniter\User\Models\Customer;
 use Igniter\User\Models\User;
 use Igniter\Admin\Http\Controllers\Dashboard;
+use Igniter\Cart\Models\Ingredient;
 use Igniter\Cart\Models\Menu;
 use Igniter\Cart\Models\Order;
 use Igniter\Cart\Models\Stock;
@@ -18,6 +20,7 @@ use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\ApplyBranding;
 use Igniter\VoxPilot\DashboardWidgets;
 use Igniter\VoxPilot\Console\BootstrapTenant;
+use Igniter\VoxPilot\Console\SplitSharedMenus;
 use Igniter\VoxPilot\Http\Controllers\SsoController;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantForAdmin;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
@@ -26,14 +29,18 @@ use Igniter\VoxPilot\Http\Middleware\VerifyHmacSignature;
 use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
 use Igniter\VoxPilot\Mail\LocalizedMailHelper;
 use Igniter\VoxPilot\Models\TenantMembership;
+use Igniter\VoxPilot\Scopes\TenantCustomerScope;
+use Igniter\VoxPilot\Scopes\TenantLocationableScope;
 use Igniter\VoxPilot\Scopes\TenantLocationScope;
 use Igniter\VoxPilot\Scopes\TenantOrderScope;
+use Igniter\VoxPilot\Scopes\TenantStaffScope;
 use Igniter\VoxPilot\Services\LanguagePreference;
 use Igniter\VoxPilot\Services\StoreChangeNotifier;
 use Igniter\VoxPilot\Services\TenantContext;
 use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
 use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
@@ -52,6 +59,7 @@ class Extension extends BaseExtension
 
         $this->registerConsoleCommand('voxpilot.bootstrap-tenant', BootstrapTenant::class);
         $this->registerConsoleCommand('voxpilot.brand', ApplyBranding::class);
+        $this->registerConsoleCommand('voxpilot.split-shared-menus', SplitSharedMenus::class);
     }
 
     #[Override]
@@ -277,10 +285,77 @@ class Extension extends BaseExtension
         $router->pushMiddlewareToGroup('igniter', ResolveTenantForAdmin::class);
     }
 
+    /** Restaurant data that TastyIgniter ties to locations, by the relation it uses. */
+    protected const LOCATIONABLE_MODELS = [
+        Menu::class,
+        \Igniter\Cart\Models\Category::class,
+        \Igniter\Cart\Models\Mealtime::class,
+        \Igniter\Cart\Models\MenuOption::class,
+        Stock::class,
+        \Igniter\Coupons\Models\Coupon::class,
+        \Igniter\Local\Models\LocationArea::class,
+        \Igniter\Local\Models\Review::class,
+        \Igniter\Reservation\Models\Reservation::class,
+        \Igniter\Reservation\Models\DiningArea::class,
+        \Igniter\Reservation\Models\DiningSection::class,
+        \Igniter\Reservation\Models\Table::class,
+    ];
+
+    /**
+     * Several restaurants share this POS: orders, locations and ingredients carry the restaurant
+     * (tenant_id); location-bound data follows its locations; staff follow their memberships;
+     * customers follow their orders.
+     */
     protected function registerTenantScopes(): void
     {
         Order::addGlobalScope(new TenantOrderScope());
         Location::addGlobalScope(new TenantLocationScope());
+        Ingredient::addGlobalScope(new TenantLocationScope());
+        User::addGlobalScope(new TenantStaffScope());
+        Customer::addGlobalScope(new TenantCustomerScope());
+
+        foreach (self::LOCATIONABLE_MODELS as $model) {
+            if (!class_exists($model)) {
+                continue;
+            }
+            $model::addGlobalScope(new TenantLocationableScope());
+            // Saved by a restaurant's staff: a crafted form cannot add another restaurant's location
+            // to it, and one created without choosing a location gets the restaurant's (otherwise it
+            // would vanish from their lists). Locations it already had are left as they are.
+            $before = new \WeakMap();
+            $model::saving(function ($record) use ($before): void {
+                if (app(TenantContext::class)->isActive() && $record->exists && $record->hasRelation('locations')) {
+                    $before[$record] = $record->locations()->withoutGlobalScopes()->pluck('locations.location_id')->all();
+                }
+            });
+            $model::saved(function ($record) use ($before): void {
+                $tenantId = app(TenantContext::class)->id();
+                if (!$tenantId || !$record->hasRelation('locations')) {
+                    return;
+                }
+                $had = $before[$record] ?? [];
+                unset($before[$record]);
+                DB::afterCommit(function () use ($record, $tenantId, $had): void {
+                    $own = Location::withoutGlobalScopes()->where('tenant_id', $tenantId)->pluck('location_id')->all();
+                    $attached = $record->locations()->withoutGlobalScopes()->pluck('locations.location_id')->all();
+                    if ($foreign = array_diff($attached, $own, $had)) {
+                        $record->locations()->detach($foreign);
+                    }
+                    if (!array_intersect($attached, $own)) {
+                        $record->locations()->syncWithoutDetaching($own);
+                    }
+                });
+            });
+        }
+
+        // New locations and ingredients made by a restaurant's staff are that restaurant's.
+        $ownedByTenant = function ($record): void {
+            if (!$record->tenant_id && ($tenantId = app(TenantContext::class)->id())) {
+                $record->tenant_id = $tenantId;
+            }
+        };
+        Location::creating($ownedByTenant);
+        Ingredient::creating($ownedByTenant);
     }
 
     protected function registerApiRoutes(): void
