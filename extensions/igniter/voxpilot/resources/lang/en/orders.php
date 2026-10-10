@@ -62,5 +62,8 @@ return [
     'turn_caller' => 'Customer',
     'turn_assistant' => 'AI assistant',
     'unavailable_warning' => '⚠ Not available now (check with the customer): :items',
+    'store_warning_store_closed' => '⚠ Arrived while the restaurant was closed or paused: check with the customer',
+    'store_warning_delivery_unavailable' => '⚠ Delivery was off when it arrived: check with the customer',
+    'store_warning_pickup_unavailable' => '⚠ Pickup was off when it arrived: check with the customer',
     'manual_unavailable_item' => ':item is not available now.',
 ];

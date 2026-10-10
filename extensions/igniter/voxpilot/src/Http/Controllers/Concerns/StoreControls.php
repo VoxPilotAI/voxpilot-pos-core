@@ -87,7 +87,7 @@ trait StoreControls
         flash()->success(lang('igniter.voxpilot::orders.manual_created', ['id' => $order->order_id]));
 
         return array_merge(
-            ['#vp-order-modal-content' => $this->renderOrderModal($order->fresh(['menus', 'status', 'address', 'payment_method', 'assignee']))],
+            ['#vp-order-modal-content' => $this->renderOrderModal($order->fresh(['menus.menu_options', 'status', 'address', 'payment_method', 'assignee']))],
             $this->afterQuickStatusChange($order),
         );
     }

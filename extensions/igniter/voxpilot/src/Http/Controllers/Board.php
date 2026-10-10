@@ -12,6 +12,7 @@ use Igniter\VoxPilot\Http\Controllers\Concerns\OrderQuickActions;
 use Igniter\VoxPilot\Http\Controllers\Concerns\StoreControls;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
+use Igniter\VoxPilot\Support\OrderLine;
 use Illuminate\Support\Collection;
 
 /**
@@ -101,13 +102,13 @@ class Board extends AdminController
         $completed = $this->completedIds($statuses);
 
         $active = Order::query()
-            ->with('menus')
+            ->with('menus.menu_options')
             ->whereIn('status_id', $statuses->pluck('status_id')->diff($completed)->all())
             ->where('created_at', '>=', now()->subDays(self::ACTIVE_DAYS))
             ->orderBy('created_at')
             ->get();
         $done = Order::query()
-            ->with('menus')
+            ->with('menus.menu_options')
             ->whereIn('status_id', $completed ?: [0])
             ->whereDate('created_at', now()->toDateString())
             ->orderByDesc('created_at')
@@ -128,7 +129,7 @@ class Board extends AdminController
                 'type' => $order->order_type === 'delivery' ? lang('igniter.voxpilot::live.delivery') : lang('igniter.voxpilot::live.pickup'),
                 'total' => (float) $order->order_total,
                 'minutes' => (int) $order->created_at?->diffInMinutes(now()),
-                'lines' => $order->menus->map(fn ($m) => ['name' => (string) $m->name, 'quantity' => (int) $m->quantity])->all(),
+                'lines' => $order->menus->map(fn ($m) => ['name' => OrderLine::name($m), 'quantity' => (int) $m->quantity])->all(),
                 'comment' => (string) ($order->comment ?? ''),
                 'ready' => VoxPilotStatusNotifier::readyAt($order)?->format('H:i'),
             ])->values()->all();

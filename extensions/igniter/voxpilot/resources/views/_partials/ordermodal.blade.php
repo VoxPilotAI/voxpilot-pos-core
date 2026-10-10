@@ -21,7 +21,7 @@
         <ul class="vp-om-lines">
             @foreach($order->menus as $menu)
                 <li>
-                    <span><strong>{{ $menu->quantity }}×</strong> {{ $menu->name }}@if($menu->comment)<em>{{ $menu->comment }}</em>@endif</span>
+                    <span><strong>{{ $menu->quantity }}×</strong> {{ \Igniter\VoxPilot\Support\OrderLine::name($menu) }}@if($menu->comment)<em>{{ $menu->comment }}</em>@endif</span>
                     <span>{{ currency_format($menu->subtotal) }}</span>
                 </li>
             @endforeach

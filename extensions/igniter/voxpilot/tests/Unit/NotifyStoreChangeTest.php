@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot\Tests\Unit;
 
+use Igniter\Local\Models\WorkingHour;
 use Igniter\VoxPilot\Jobs\NotifyStoreChange;
 use Igniter\VoxPilot\Models\Installation;
 use Igniter\VoxPilot\Services\StoreChangeNotifier;
@@ -54,5 +55,22 @@ class NotifyStoreChangeTest extends TestCase
         StoreChangeNotifier::notify($connected, 'menu.changed');
 
         Queue::assertPushed(NotifyStoreChange::class, 2);
+    }
+
+    public function test_one_event_per_location_for_a_burst_of_changes_like_saving_the_opening_hours(): void
+    {
+        Queue::fake();
+        $location = $this->makeLocation($tenant = $this->makeTenant());
+        Installation::create(['tenant_id' => $tenant->id, 'status' => Installation::STATUS_CONNECTED]);
+
+        foreach ([0, 1] as $weekday) {
+            $hour = new WorkingHour();
+            $hour->forceFill(['location_id' => $location->getKey(), 'type' => 'opening', 'weekday' => $weekday, 'opening_time' => '09:00', 'closing_time' => '10:00', 'status' => 1]);
+            $hour->save();
+        }
+        StoreChangeNotifier::notify($location, 'store.changed');
+
+        Queue::assertPushed(NotifyStoreChange::class, fn (NotifyStoreChange $job) => $job->delay !== null);
+        Queue::assertPushed(NotifyStoreChange::class, 1);
     }
 }

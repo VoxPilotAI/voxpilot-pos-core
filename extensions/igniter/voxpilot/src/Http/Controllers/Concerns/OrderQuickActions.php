@@ -132,7 +132,7 @@ trait OrderQuickActions
 
     protected function findQuickOrder(): Order
     {
-        return Order::query()->with(['menus', 'status', 'address', 'payment_method', 'assignee'])
+        return Order::query()->with(['menus.menu_options', 'status', 'address', 'payment_method', 'assignee'])
             ->findOrFail((int) request()->input('order_id'));
     }
 

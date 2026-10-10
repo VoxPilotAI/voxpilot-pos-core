@@ -62,5 +62,8 @@ return [
     'turn_caller' => 'Kunde',
     'turn_assistant' => 'KI-Assistent',
     'unavailable_warning' => '⚠ Gerade nicht verfügbar (mit dem Kunden klären): :items',
+    'store_warning_store_closed' => '⚠ Kam an, während das Restaurant geschlossen oder pausiert war: mit dem Kunden klären',
+    'store_warning_delivery_unavailable' => '⚠ Kam an, während die Lieferung aus war: mit dem Kunden klären',
+    'store_warning_pickup_unavailable' => '⚠ Kam an, während die Abholung aus war: mit dem Kunden klären',
     'manual_unavailable_item' => ':item ist gerade nicht verfügbar.',
 ];

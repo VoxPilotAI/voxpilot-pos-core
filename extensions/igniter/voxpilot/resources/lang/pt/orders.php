@@ -62,5 +62,8 @@ return [
     'turn_caller' => 'Cliente',
     'turn_assistant' => 'Assistente IA',
     'unavailable_warning' => '⚠ Indisponível agora (confirmar com o cliente): :items',
+    'store_warning_store_closed' => '⚠ Chegou com o restaurante fechado ou em pausa: confirmar com o cliente',
+    'store_warning_delivery_unavailable' => '⚠ Chegou com a entrega desligada: confirmar com o cliente',
+    'store_warning_pickup_unavailable' => '⚠ Chegou com a retirada desligada: confirmar com o cliente',
     'manual_unavailable_item' => ':item não está disponível agora.',
 ];

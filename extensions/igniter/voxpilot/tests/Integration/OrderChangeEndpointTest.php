@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot\Tests\Integration;
 
 use Igniter\Cart\Models\Order;
+use Igniter\VoxPilot\Models\Tenant;
 use Igniter\VoxPilot\Models\TenantApiToken;
 use Igniter\VoxPilot\Tests\Concerns\MakesRestaurant;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -60,6 +61,20 @@ class OrderChangeEndpointTest extends TestCase
         $this->assertSame(Order::DELIVERY, $order->order_type);
         $this->assertStringContainsString('📍 Barrio Escalante', (string) $order->comment);
         $this->assertCount(2, $order->menus);
+    }
+
+    public function test_notes_on_the_order_are_in_the_restaurant_language(): void
+    {
+        $order = $this->order();
+        $tenant = Tenant::find($order->tenant_id);
+        $tenant->settings = array_merge((array) $tenant->settings, ['locale' => 'es']);
+        $tenant->save();
+
+        $this->putJson('/api/voxpilot/orders/ord_change_1', [
+            'items' => [['name' => 'Coca-Cola', 'quantity' => 1]],
+        ], $this->auth())->assertOk();
+
+        $this->assertStringContainsString('Modificado por el cliente por teléfono', (string) $order->refresh()->comment);
     }
 
     public function test_rejects_items_not_on_the_menu_and_keeps_the_order(): void

@@ -62,5 +62,8 @@ return [
     'turn_caller' => 'Klant',
     'turn_assistant' => 'AI-assistent',
     'unavailable_warning' => '⚠ Nu niet beschikbaar (afstemmen met de klant): :items',
+    'store_warning_store_closed' => '⚠ Binnengekomen terwijl het restaurant gesloten of gepauzeerd was: afstemmen met de klant',
+    'store_warning_delivery_unavailable' => '⚠ Binnengekomen terwijl bezorgen uit stond: afstemmen met de klant',
+    'store_warning_pickup_unavailable' => '⚠ Binnengekomen terwijl afhalen uit stond: afstemmen met de klant',
     'manual_unavailable_item' => ':item is nu niet beschikbaar.',
 ];

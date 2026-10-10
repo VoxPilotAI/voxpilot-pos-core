@@ -8,6 +8,7 @@ use Igniter\Cart\Models\Order;
 use Igniter\Cart\Models\OrderMenu;
 use Igniter\Cart\Models\OrderMenuOptionValue;
 use Igniter\Cart\Models\OrderTotal;
+use Igniter\Local\Classes\CoveredAreaCondition;
 use Igniter\Local\Models\Location;
 use Igniter\Local\Models\LocationArea;
 use Igniter\VoxPilot\Models\Tenant;
@@ -37,15 +38,22 @@ class OrderIngestionService
         // The order stays as the caller confirmed it, but the kitchen sees which items it cannot make
         // now (the assistant's menu may have been a few minutes old).
         $unavailable = $this->unavailableMatches($matchResult['matched'], $locationId);
+        $storeIssue = $this->storeIssue($payload, $locationId);
 
         try {
-            $result = DB::transaction(function () use ($payload, $tenant, $locationId, $idempotencyKey, $matchResult, $deliveryFee, $unavailable) {
+            $result = DB::transaction(function () use ($payload, $tenant, $locationId, $idempotencyKey, $matchResult, $deliveryFee, $unavailable, $storeIssue) {
                 $order = $this->createOrder($payload, $tenant, $locationId, $matchResult['unmapped']);
+                $warnings = [];
+                if ($storeIssue) {
+                    $warnings[] = lang('igniter.voxpilot::orders.store_warning_'.$storeIssue);
+                }
                 if ($unavailable) {
-                    $warning = lang('igniter.voxpilot::orders.unavailable_warning', [
+                    $warnings[] = lang('igniter.voxpilot::orders.unavailable_warning', [
                         'items' => implode(', ', array_map(fn ($u) => $u['quantity'].'× '.$u['name'], $unavailable)),
                     ]);
-                    $order->comment = trim($order->comment ? $order->comment."\n".$warning : $warning);
+                }
+                if ($warnings) {
+                    $order->comment = trim(implode("\n", array_filter([$order->comment, ...$warnings])));
                     $order->save();
                 }
                 $this->createOrderMenus($order, $matchResult['matched'], $matchResult['unmapped']);
@@ -53,7 +61,7 @@ class OrderIngestionService
                 $metadata = $this->createMetadata($order, $tenant, $locationId, $payload, $idempotencyKey);
 
                 return [
-                    'order' => $order->fresh(['menus', 'location']),
+                    'order' => $order->fresh(['menus.menu_options', 'location']),
                     'metadata' => $metadata,
                     'created' => true,
                     'unmapped' => $matchResult['unmapped'],
@@ -120,11 +128,37 @@ class OrderIngestionService
             'lines' => $lines,
             'unmapped' => array_map(fn ($i) => ['name' => (string) ($i['name'] ?? '?'), 'quantity' => (int) ($i['quantity'] ?? 1)], $matchResult['unmapped']),
             'unavailable' => $unavailable,
+            'store_issue' => $this->storeIssue($payload, $locationId),
             'subtotal' => round($subtotal, 2),
             'delivery_fee' => round((float) $deliveryFee, 2),
             'total' => round($subtotal + (float) $deliveryFee, 2),
             'currency' => (string) rescue(fn () => app('currency')->getUserCurrency(), '', false),
         ];
+    }
+
+    /**
+     * Why the location cannot take this order right now, if it cannot: `store_closed` (paused or
+     * outside opening hours), `delivery_unavailable` or `pickup_unavailable` (that order type is off).
+     */
+    protected function storeIssue(array $payload, int $locationId): ?string
+    {
+        $location = Location::query()->withoutGlobalScopes()->find($locationId);
+        if (!$location) {
+            return null;
+        }
+        $store = (new StoreStatus())->forVoxPilot($location);
+        if (!$store['open']) {
+            return 'store_closed';
+        }
+        $delivery = ($payload['fulfillment']['type'] ?? 'pickup') === 'delivery';
+        if ($delivery && !$store['delivery_enabled']) {
+            return 'delivery_unavailable';
+        }
+        if (!$delivery && !$store['collection_enabled']) {
+            return 'pickup_unavailable';
+        }
+
+        return null;
     }
 
     /**
@@ -377,23 +411,16 @@ class OrderIngestionService
 
         $subtotal = array_sum(array_map(fn($m) => $m['line_total'] ?? 0, $matched));
 
-        foreach ($areas as $area) {
-            $conditions = is_array($area->conditions) ? $area->conditions : [];
-            foreach ($conditions as $condition) {
-                $total = (float) ($condition['total'] ?? $condition['amount'] ?? 0);
-                $charge = (float) ($condition['charge'] ?? $condition['delivery_charge'] ?? 0);
-                $type = $condition['type'] ?? 'above';
+        // The caller's address is not geocoded: the default delivery area (else the first one) applies.
+        // Conditions are TastyIgniter's own (`amount` = charge, `total` = threshold, type all/above/below);
+        // a charge of -1 means "no delivery" and is left to the staff, so it adds nothing here.
+        $area = $areas->firstWhere('is_default', true) ?? $areas->first();
+        $condition = collect(is_array($area->conditions) ? $area->conditions : [])
+            ->sortBy('priority')
+            ->mapInto(CoveredAreaCondition::class)
+            ->first(fn (CoveredAreaCondition $c): bool => $c->isValid($subtotal));
 
-                if ($type === 'above' && $subtotal > $total) {
-                    return $charge;
-                }
-                if ($type === 'below' && $subtotal <= $total) {
-                    return $charge;
-                }
-            }
-        }
-
-        return 0;
+        return (float) ($condition?->getCharge() ?? 0);
     }
 
     protected function hasPriceMismatch(array $matched): bool

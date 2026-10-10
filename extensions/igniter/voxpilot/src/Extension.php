@@ -12,6 +12,7 @@ use Igniter\Cart\Models\Menu;
 use Igniter\Cart\Models\Order;
 use Igniter\Cart\Models\Stock;
 use Igniter\Local\Models\Location;
+use Igniter\Local\Models\WorkingHour;
 use Igniter\System\Helpers\MailHelper;
 use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\ApplyBranding;
@@ -237,7 +238,7 @@ class Extension extends BaseExtension
 
     /**
      * Menu edits in the TastyIgniter admin (an item changed, removed, or its tracked stock ran out or
-     * came back) tell VoxPilot to read the menu again (pos-gateway SPEC-001).
+     * came back) and opening-hour or location edits tell VoxPilot to read the menu again (pos-gateway SPEC-001).
      */
     protected function registerMenuChangeEvents(): void
     {
@@ -253,6 +254,15 @@ class Extension extends BaseExtension
                 StoreChangeNotifier::notify($location, 'menu.changed');
             }
         });
+
+        // Opening hours and the location's own settings (edited in the admin) change the store status.
+        $storeChanged = function (?Location $location): void {
+            if ($location) {
+                StoreChangeNotifier::notify($location, 'store.changed');
+            }
+        };
+        WorkingHour::saved(fn (WorkingHour $hour) => $storeChanged(Location::withoutGlobalScopes()->find($hour->location_id)));
+        Location::saved(fn (Location $location) => $storeChanged($location));
     }
 
     /** Cache-buster for public/voxpilot/admin files: their modification time. */
