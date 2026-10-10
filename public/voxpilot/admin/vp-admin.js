@@ -43,9 +43,18 @@
         menu.insertBefore(item, menu.firstChild);
     }
 
+    /* Language switcher, rendered by the VoxPilot extension as a <template> at the end of the page. */
+    function addLanguageMenu() {
+        var menu = document.getElementById('menu-mainmenu');
+        var template = document.getElementById('vp-language-menu');
+        if (!menu || !template || menu.querySelector('.vp-language')) return;
+        menu.insertBefore(template.content.cloneNode(true), menu.firstChild);
+    }
+
     function init() {
         apply(root.getAttribute('data-bs-theme') || 'light');
         addToggle();
+        addLanguageMenu();
     }
 
     if (window.matchMedia) {

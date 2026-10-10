@@ -20,11 +20,15 @@
                         <strong>{{ $item['name'] }}</strong>
                         <span class="vp-om-time">{{ $item['category'] }}@if($item['category']) · @endif{{ currency_format($item['price']) }}</span>
                     </div>
-                    <button type="button" class="vp-switch {{ $item['sold_out'] ? '' : 'on' }}" role="switch" aria-checked="{{ $item['sold_out'] ? 'false' : 'true' }}"
-                            data-request="onSetSoldOut" data-request-data="menu_id: {{ $item['id'] }}, sold_out: {{ $item['sold_out'] ? 0 : 1 }}">
-                        <span class="{{ $item['sold_out'] ? 'vp-text-danger' : 'vp-text-success' }}">{{ $item['sold_out'] ? lang('igniter.voxpilot::board.sold_out') : lang('igniter.voxpilot::board.in_stock') }}</span>
-                        <span class="vp-switch-track" aria-hidden="true"><span></span></span>
-                    </button>
+                    @if($item['out_of_stock'])
+                        <span class="vp-pill vp-pill-danger" title="@lang('igniter.voxpilot::board.out_of_stock_help')">@lang('igniter.voxpilot::board.out_of_stock')</span>
+                    @else
+                        <button type="button" class="vp-switch {{ $item['unavailable_today'] ? '' : 'on' }}" role="switch" aria-checked="{{ $item['unavailable_today'] ? 'false' : 'true' }}"
+                                data-request="onSetUnavailable" data-request-data="menu_id: {{ $item['id'] }}, unavailable: {{ $item['unavailable_today'] ? 0 : 1 }}">
+                            <span class="{{ $item['unavailable_today'] ? 'vp-text-danger' : 'vp-text-success' }}">{{ $item['unavailable_today'] ? lang('igniter.voxpilot::board.sold_out') : lang('igniter.voxpilot::board.in_stock') }}</span>
+                            <span class="vp-switch-track" aria-hidden="true"><span></span></span>
+                        </button>
+                    @endif
                 </li>
             @endforeach
         </ul>

@@ -39,7 +39,7 @@
             <div class="vp-store-group">
                 <button type="button" class="btn btn-light"
                         data-request="onOpenAvailability" data-request-success="vpOpenOrderModal()">
-                    <i class="fa fa-ban"></i> @lang('igniter.voxpilot::board.availability')
+                    <i class="fa fa-utensils"></i> @lang('igniter.voxpilot::board.availability')
                     @if($soldOut)<span class="vp-count vp-count-danger">{{ $soldOut }}</span>@endif
                 </button>
                 @if($store['paused'])

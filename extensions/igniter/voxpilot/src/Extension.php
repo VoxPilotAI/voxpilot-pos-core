@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Igniter\VoxPilot;
 
 use Igniter\Admin\Facades\Template;
+use Igniter\User\Facades\AdminAuth;
+use Igniter\User\Models\User;
 use Igniter\Admin\Http\Controllers\Dashboard;
 use Igniter\Cart\Models\Order;
 use Igniter\Local\Models\Location;
@@ -20,10 +22,13 @@ use Igniter\VoxPilot\Http\Middleware\VerifyHmacSignature;
 use Igniter\VoxPilot\Http\Middleware\VerifyProvisioningSecret;
 use Igniter\VoxPilot\Jobs\NotifyStatusChange;
 use Igniter\VoxPilot\Mail\LocalizedMailHelper;
+use Igniter\VoxPilot\Models\TenantMembership;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Scopes\TenantLocationScope;
 use Igniter\VoxPilot\Scopes\TenantOrderScope;
+use Igniter\VoxPilot\Services\LanguagePreference;
 use Igniter\VoxPilot\Services\TenantContext;
+use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +61,7 @@ class Extension extends BaseExtension
         $this->registerOAuthRoutes();
         $this->registerChannels();
         $this->registerOrderStatusListener();
+        $this->registerStaffMembership();
     }
 
     #[Override]
@@ -187,6 +193,41 @@ class Extension extends BaseExtension
             .'<link rel="stylesheet" href="'.e(asset('voxpilot/admin/vp-admin.css')).'?v='.self::assetVersion('vp-admin.css').'">');
 
         Template::registerHook('endScripts', fn () => '<script src="'.e(asset('voxpilot/admin/vp-admin.js')).'?v='.self::assetVersion('vp-admin.js').'"></script>');
+        Template::registerHook('endScripts', fn () => $this->renderLanguageMenu());
+    }
+
+    /** The header language switcher (moved into the header by vp-admin.js). */
+    protected function renderLanguageMenu(): string
+    {
+        $user = AdminAuth::user();
+        if (!$user) {
+            return '';
+        }
+        $tenant = app(TenantContext::class)->tenant();
+        $preference = new LanguagePreference();
+
+        return view('igniter.voxpilot::_partials.languagemenu', [
+            'languages' => Locale::options(),
+            'current' => Locale::normalize($user->getLocale() ?? app()->getLocale()),
+            'canTeam' => $tenant && $preference->canSetForTenant($user, $tenant),
+            'tenantLocale' => $tenant ? $preference->tenantLocale($tenant) : null,
+        ])->render();
+    }
+
+    /**
+     * Staff created from the admin by a restaurant's owner belong to that restaurant (tenant
+     * membership), and start in the restaurant's language.
+     */
+    protected function registerStaffMembership(): void
+    {
+        User::created(function (User $user): void {
+            $tenant = app(TenantContext::class)->tenant();
+            if ($tenant && AdminAuth::isLogged()) {
+                TenantMembership::firstOrCreate(['tenant_id' => $tenant->id, 'user_id' => $user->user_id], ['role' => 'staff']);
+            }
+        });
+
+        TenantMembership::created(fn (TenantMembership $membership) => (new LanguagePreference())->applyTenantDefault($membership));
     }
 
     /** Cache-buster for public/voxpilot/admin files: their modification time. */

@@ -111,6 +111,11 @@ html[data-bs-theme] .navbar-top {
     backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--vp-border) !important;
     min-height: 64px;
+    /* backdrop-filter makes the header its own stacking context: lift it over the page so its
+       dropdowns (user menu, locations, notifications) open above the dashboard widgets. Bootstrap
+       modals (1055) and offcanvas (1045) stay above it. */
+    position: relative;
+    z-index: 1030;
 }
 html[data-bs-theme] .navbar-top .logo-svg { height: 26px; width: auto; }
 html[data-bs-theme] .navbar-top .nav-link { color: var(--vp-muted); border-radius: 10px; }
@@ -576,3 +581,11 @@ body.vp-kds .vp-card-action { min-height: 52px; font-size: 16px; }
     .vp-store .vp-switch { flex: 1; justify-content: space-between; }
     .vp-manual-line { grid-template-columns: minmax(0, 1fr) 64px 44px; }
 }
+
+/* Header language switcher */
+.vp-language .nav-link { display: inline-flex; align-items: center; gap: 6px; }
+.vp-language-code { display: inline-grid; place-items: center; min-width: 28px; height: 20px; padding: 0 5px; border-radius: 6px; background: var(--vp-panel-2); color: var(--vp-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+.vp-device-option.on .vp-language-code { background: var(--vp-success-soft); color: var(--vp-success); }
+.vp-language-team { align-items: flex-start; min-height: 0; margin-top: 6px; padding-top: 10px; padding-bottom: 8px; border-top: 1px solid var(--vp-border); border-radius: 0; }
+.vp-language-team input { margin-top: 3px; flex-shrink: 0; }
+.vp-language-team small { display: block; font-size: 12px; color: var(--vp-muted); line-height: 1.4; }

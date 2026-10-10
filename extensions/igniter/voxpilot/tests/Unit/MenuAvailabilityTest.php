@@ -4,59 +4,80 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot\Tests\Unit;
 
+use Igniter\Cart\Models\Stock;
 use Igniter\VoxPilot\Services\MenuAvailability;
 use Igniter\VoxPilot\Tests\Concerns\MakesRestaurant;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 require_once __DIR__.'/../Concerns/MakesRestaurant.php';
 
-/** Sold out with one click, through TastyIgniter's stock override. */
+/** "Not available today": a dish cooked to order stops being offered until tomorrow, stock untouched. */
 class MenuAvailabilityTest extends TestCase
 {
     use DatabaseTransactions;
     use MakesRestaurant;
 
-    public function test_untracked_item_is_sold_out_and_back_with_its_stock_settings_restored(): void
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
+    public function test_marks_a_dish_not_available_today_without_touching_its_stock(): void
     {
         $location = $this->makeLocation($this->makeTenant());
-        $menu = $this->makeMenu($location, 'Margherita');
+        $menu = $this->makeMenu($location, 'Pizza Hawaiana');
         $availability = new MenuAvailability();
 
-        $availability->setSoldOut($location, $menu->getKey(), true);
+        $availability->setUnavailableToday($location, $menu->getKey(), true);
 
-        $stock = $menu->fresh()->getStockByLocation($location);
-        $this->assertTrue($stock->is_tracked);
-        $this->assertTrue($stock->outOfStock());
-        $this->assertTrue($menu->fresh()->outOfStock($location));
-        $this->assertTrue($availability->items($location)->firstWhere('id', $menu->getKey())['sold_out']);
+        $item = $availability->items($location)->firstWhere('id', $menu->getKey());
+        $this->assertTrue($item['unavailable_today']);
+        $this->assertTrue($item['sold_out']);
+        $this->assertFalse($item['out_of_stock']);
+        $this->assertFalse(Stock::where('stockable_id', $menu->getKey())->where('is_tracked', true)->exists());
 
-        $availability->setSoldOut($location, $menu->getKey(), false);
+        $availability->setUnavailableToday($location, $menu->getKey(), false);
 
-        $stock = $stock->fresh();
-        $this->assertFalse($stock->is_tracked);
-        $this->assertFalse($stock->outOfStock());
         $this->assertFalse($availability->items($location)->firstWhere('id', $menu->getKey())['sold_out']);
     }
 
-    public function test_tracked_item_keeps_its_tracking(): void
+    public function test_the_dish_is_back_on_its_own_the_next_day(): void
     {
         $location = $this->makeLocation($this->makeTenant());
-        $menu = $this->makeMenu($location, 'Diavola');
+        $menu = $this->makeMenu($location, 'Pizza Hawaiana');
+        $other = $this->makeMenu($location, 'Calzone');
+        $availability = new MenuAvailability();
+
+        Carbon::setTestNow(Carbon::parse('2026-10-09 21:30'));
+        $availability->setUnavailableToday($location, $menu->getKey(), true);
+        $this->assertSame([(int) $menu->getKey()], $availability->unavailableToday($location));
+
+        Carbon::setTestNow(Carbon::parse('2026-10-10 08:00'));
+        $this->assertSame([], $availability->unavailableToday($location));
+
+        // The expired mark is dropped the next time the list is written.
+        $availability->setUnavailableToday($location, $other->getKey(), true);
+        $marks = (array) ((new \Igniter\VoxPilot\Services\StoreStatus())->own($location->fresh())[MenuAvailability::KEY] ?? []);
+        $this->assertSame([(string) $other->getKey()], array_map('strval', array_keys($marks)));
+    }
+
+    public function test_tracked_stock_that_ran_out_shows_as_out_of_stock(): void
+    {
+        $location = $this->makeLocation($this->makeTenant());
+        $menu = $this->makeMenu($location, 'Coca-Cola 600 ml');
         $stock = $menu->getStockByLocation($location);
         $stock->is_tracked = true;
         $stock->save();
-        $stock->updateStock(12, \Igniter\Cart\Models\Stock::STATE_RECOUNT);
-        $availability = new MenuAvailability();
 
-        $availability->setSoldOut($location, $menu->getKey(), true);
-        $availability->setSoldOut($location, $menu->getKey(), false);
+        $item = (new MenuAvailability())->items($location)->firstWhere('id', $menu->getKey());
 
-        $stock = $stock->fresh();
-        $this->assertTrue($stock->is_tracked);
-        $this->assertSame(12, $stock->quantity);
-        $this->assertFalse($stock->outOfStock());
+        $this->assertTrue($item['out_of_stock']);
+        $this->assertFalse($item['unavailable_today']);
+        $this->assertTrue($item['sold_out']);
     }
 
     public function test_items_of_another_location_cannot_be_changed(): void
@@ -67,6 +88,6 @@ class MenuAvailabilityTest extends TestCase
 
         $this->expectException(ModelNotFoundException::class);
 
-        (new MenuAvailability())->setSoldOut($mine, $menu->getKey(), true);
+        (new MenuAvailability())->setUnavailableToday($mine, $menu->getKey(), true);
     }
 }

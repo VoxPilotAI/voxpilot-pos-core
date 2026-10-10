@@ -40,7 +40,7 @@
                     <select class="form-select" name="items[0][menu_id]" aria-label="@lang('igniter.voxpilot::orders.item')">
                         <option value="">@lang('igniter.voxpilot::orders.item')…</option>
                         @foreach($items->sortBy([['category', 'asc'], ['name', 'asc']]) as $item)
-                            <option value="{{ $item['id'] }}" @disabled($item['sold_out'])>{{ $item['name'] }} · {{ currency_format($item['price']) }}@if($item['sold_out']) · @lang('igniter.voxpilot::board.sold_out')@endif</option>
+                            <option value="{{ $item['id'] }}" @disabled($item['sold_out'])>{{ $item['name'] }} · {{ currency_format($item['price']) }}@if($item['out_of_stock']) · @lang('igniter.voxpilot::board.out_of_stock')@elseif($item['unavailable_today']) · @lang('igniter.voxpilot::board.sold_out')@endif</option>
                         @endforeach
                     </select>
                     <input type="number" class="form-control" name="items[0][quantity]" value="1" min="1" max="99" aria-label="@lang('igniter.voxpilot::orders.quantity')">

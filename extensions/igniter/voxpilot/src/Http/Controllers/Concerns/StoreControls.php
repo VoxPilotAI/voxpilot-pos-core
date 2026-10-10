@@ -12,7 +12,7 @@ use Igniter\VoxPilot\Services\StoreStatus;
 
 /**
  * What the restaurant takes right now, from the board: kitchen busy (+minutes), pause orders for the
- * rest of the day, delivery and pickup on or off, sold-out items and a quick manual order. Every
+ * rest of the day, delivery and pickup on or off, items not available today and a quick manual order. Every
  * handler works on the owner's location (StoreStatus::resolveLocation, tenant-scoped).
  */
 trait StoreControls
@@ -51,12 +51,12 @@ trait StoreControls
         return ['#vp-order-modal-content' => $this->renderAvailability()];
     }
 
-    public function onSetSoldOut(): array
+    public function onSetUnavailable(): array
     {
-        (new MenuAvailability($this->storeStatus()))->setSoldOut(
+        (new MenuAvailability($this->storeStatus()))->setUnavailableToday(
             $this->storeLocation(),
             (int) request()->input('menu_id'),
-            (bool) request()->input('sold_out'),
+            (bool) request()->input('unavailable'),
         );
 
         return array_merge(['#vp-order-modal-content' => $this->renderAvailability()], $this->renderStoreBar());

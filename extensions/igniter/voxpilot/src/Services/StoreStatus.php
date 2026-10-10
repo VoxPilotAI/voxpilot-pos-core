@@ -113,18 +113,27 @@ class StoreStatus
         return (array) $location->getSettings(self::SETTINGS, []);
     }
 
-    /**
-     * Merges $values into one settings item of the location (the other keys of the item are kept).
-     * Written on the table directly: LocationSettings' own save path depends on model hooks.
-     */
+    /** Merges $values into one settings item of the location (the other keys of the item are kept). */
     public function write(Location $location, string $item, array $values): void
+    {
+        $this->update($location, $item, fn (array $data) => array_merge($data, $values));
+    }
+
+    /**
+     * Read-modify-write of one settings item under a row lock, so two staff members changing it at
+     * once do not lose each other's change. Written on the table directly: LocationSettings' own
+     * save path depends on model hooks.
+     *
+     * @param callable(array): array $change
+     */
+    public function update(Location $location, string $item, callable $change): void
     {
         $table = (new LocationSettings())->getTable();
         $key = ['location_id' => $location->getKey(), 'item' => $item];
 
-        DB::transaction(function () use ($table, $key, $values): void {
+        DB::transaction(function () use ($table, $key, $change): void {
             $current = DB::table($table)->where($key)->lockForUpdate()->value('data');
-            $data = array_merge((array) (json_decode((string) $current, true) ?: []), $values);
+            $data = $change((array) (json_decode((string) $current, true) ?: []));
             DB::table($table)->updateOrInsert($key, ['data' => json_encode($data)]);
         });
 

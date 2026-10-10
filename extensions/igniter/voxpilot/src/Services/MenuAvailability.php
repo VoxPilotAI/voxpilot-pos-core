@@ -4,71 +4,96 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot\Services;
 
+use Carbon\Carbon;
 use Igniter\Cart\Models\Menu;
 use Igniter\Cart\Models\Stock;
 use Igniter\Local\Models\Location;
 use Illuminate\Support\Collection;
 
 /**
- * Sold out with one click: TastyIgniter's stock override on the item's stock at the location.
+ * Which menu items the location can sell right now.
  *
- * TastyIgniter only applies the override to tracked stock. When the owner does not track an item,
- * tracking is switched on for the override and switched off again when the item is back, so the
- * owner's stock settings end where they started (the stocks switched on here are kept in the
- * location's `voxpilot` settings).
+ * A restaurant mostly cooks to order: a pizza has no stock count, it stops being available when an
+ * ingredient runs out. So the staff mark an item "not available today" with one click, and it is
+ * back on its own the next day; nothing in TastyIgniter's stock (quantities, tracking) is touched.
+ * The marks live in the location's `voxpilot` settings (`unavailable_until`: menu id => end of day).
+ * Items whose stock the owner does track in TastyIgniter (bottled drinks…) are also unavailable when
+ * that stock runs out.
  */
 class MenuAvailability
 {
+    public const KEY = 'unavailable_until';
+
     public function __construct(protected StoreStatus $store = new StoreStatus()) {}
 
-    /** The location's enabled items, sold-out ones flagged. */
+    /** The location's enabled items with their availability. */
     public function items(Location $location): Collection
     {
+        $marked = $this->unavailableToday($location);
+
         return $this->query($location)
             ->with(['stocks', 'categories'])
             ->orderBy('menu_name')
             ->get()
-            ->map(fn (Menu $menu) => [
-                'id' => (int) $menu->getKey(),
-                'name' => (string) $menu->menu_name,
-                'category' => (string) ($menu->categories->first()?->name ?? ''),
-                'price' => (float) $menu->menu_price,
-                'sold_out' => $this->isSoldOut($menu, $location),
-            ]);
+            ->map(function (Menu $menu) use ($location, $marked) {
+                $outOfStock = $this->outOfStock($menu, $location);
+                $today = in_array((int) $menu->getKey(), $marked, true);
+
+                return [
+                    'id' => (int) $menu->getKey(),
+                    'name' => (string) $menu->menu_name,
+                    'category' => (string) ($menu->categories->first()?->name ?? ''),
+                    'price' => (float) $menu->menu_price,
+                    'unavailable_today' => $today,
+                    'out_of_stock' => $outOfStock,
+                    'sold_out' => $today || $outOfStock,
+                ];
+            });
     }
 
-    public function isSoldOut(Menu $menu, Location $location): bool
+    /** Ids of the items marked not available today (expired marks left out). */
+    public function unavailableToday(Location $location): array
     {
-        return $menu->stocks->where('location_id', $location->getKey())
-            ->contains(fn (Stock $stock) => $stock->outOfStock());
+        $now = now();
+        $marks = (array) ($this->store->own($location)[self::KEY] ?? []);
+
+        return array_values(array_map('intval', array_keys(array_filter(
+            $marks,
+            fn ($until) => is_string($until) && Carbon::parse($until)->greaterThan($now),
+        ))));
     }
 
-    public function setSoldOut(Location $location, int $menuId, bool $soldOut): Menu
+    /** Marks an item of the location not available until the end of today, or available again. */
+    public function setUnavailableToday(Location $location, int $menuId, bool $unavailable): Menu
     {
         /** @var Menu $menu */
         $menu = $this->query($location)->findOrFail($menuId);
-        $stock = $menu->getStockByLocation($location);
-        $switchedOn = array_map('intval', (array) ($this->store->own($location)['tracked_for_sold_out'] ?? []));
+        $now = now();
 
-        if ($soldOut) {
-            if (!$stock->is_tracked) {
-                $stock->is_tracked = true;
-                $stock->saveQuietly();
-                $switchedOn[] = (int) $stock->getKey();
+        $this->store->update($location, StoreStatus::SETTINGS, function (array $data) use ($menuId, $unavailable, $now) {
+            // Drop expired marks while here, so the list never grows.
+            $marks = array_filter(
+                (array) ($data[self::KEY] ?? []),
+                fn ($until) => is_string($until) && Carbon::parse($until)->greaterThan($now),
+            );
+            if ($unavailable) {
+                $marks[(string) $menuId] = $now->copy()->endOfDay()->toIso8601String();
+            } else {
+                unset($marks[(string) $menuId]);
             }
-            $stock->applyOutOfStockOverride(Stock::OOS_INDEFINITELY);
-        } else {
-            $stock->clearOutOfStockOverride();
-            if (in_array((int) $stock->getKey(), $switchedOn, true)) {
-                $stock->is_tracked = false;
-                $stock->saveQuietly();
-                $switchedOn = array_diff($switchedOn, [(int) $stock->getKey()]);
-            }
-        }
+            $data[self::KEY] = (object) $marks;
 
-        $this->store->write($location, StoreStatus::SETTINGS, ['tracked_for_sold_out' => array_values(array_unique($switchedOn))]);
+            return $data;
+        });
 
-        return $menu->unsetRelation('stocks');
+        return $menu;
+    }
+
+    /** Out of stock in TastyIgniter's own inventory (only items whose stock the owner tracks). */
+    protected function outOfStock(Menu $menu, Location $location): bool
+    {
+        return $menu->stocks->where('location_id', $location->getKey())
+            ->contains(fn (Stock $stock) => $stock->outOfStock());
     }
 
     /** Enabled items offered at the location (same rule as the menu VoxPilot reads). */
