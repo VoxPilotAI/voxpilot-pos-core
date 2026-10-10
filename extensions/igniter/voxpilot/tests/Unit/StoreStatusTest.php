@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot\Tests\Unit;
 
+use Carbon\Carbon;
 use Igniter\Local\Models\Location;
+use Igniter\Local\Models\WorkingHour;
 use Igniter\VoxPilot\Services\StoreStatus;
 use Igniter\VoxPilot\Tests\Concerns\MakesRestaurant;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -85,5 +87,23 @@ class StoreStatusTest extends TestCase
         $this->assertFalse($location->fresh()->hasDelivery());
         $this->assertTrue($location->fresh()->hasCollection());
         $this->assertFalse($store->snapshot($location)['delivery_enabled']);
+    }
+
+    public function test_tells_today_s_opening_hours_and_when_it_opens_again(): void
+    {
+        $location = $this->location();
+        foreach (range(0, 6) as $weekday) {
+            $hour = new WorkingHour();
+            $hour->forceFill(['location_id' => $location->getKey(), 'type' => 'opening', 'weekday' => $weekday, 'opening_time' => '09:00', 'closing_time' => '10:00', 'status' => 1]);
+            $hour->save();
+        }
+        Carbon::setTestNow(Carbon::parse('2026-10-09 12:00'));
+
+        $store = (new StoreStatus())->forVoxPilot($location->fresh());
+
+        $this->assertSame('09:00-10:00', $store['hours_today']);
+        $this->assertFalse($store['open']);
+        $this->assertSame('2026-10-10 09:00', $store['opens_at']);
+        Carbon::setTestNow();
     }
 }

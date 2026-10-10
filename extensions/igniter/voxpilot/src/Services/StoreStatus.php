@@ -66,7 +66,29 @@ class StoreStatus
             'collection_enabled' => (bool) $location->getSettings('collection.is_enabled', 1),
             'delivery_lead_time' => (int) $location->getSettings('delivery.lead_time', 15),
             'collection_lead_time' => (int) $location->getSettings('collection.lead_time', 15),
+            'hours_today' => $this->hoursToday($location),
+            'opens_at' => $this->scheduleOpen($location) === false ? $this->nextOpening($location) : null,
         ];
+    }
+
+    /** Today's opening hours ("12:00-22:30", several ranges comma-separated; "" when closed all day). */
+    protected function hoursToday(Location $location): ?string
+    {
+        try {
+            return (string) $location->newWorkingSchedule('opening')->forDate(Carbon::now());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /** When it opens next ("2026-10-10 12:00"), for a store outside its hours. */
+    protected function nextOpening(Location $location): ?string
+    {
+        try {
+            return $location->newWorkingSchedule('opening', 7)->nextOpenAt(Carbon::now())?->format('Y-m-d H:i');
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -74,7 +96,8 @@ class StoreStatus
      * now, extra wait and which order types are on.
      *
      * @return array{open: bool, paused: bool, within_hours: ?bool, busy_minutes: int,
-     *     delivery_enabled: bool, collection_enabled: bool, delivery_lead_time: int, collection_lead_time: int}
+     *     delivery_enabled: bool, collection_enabled: bool, delivery_lead_time: int, collection_lead_time: int,
+     *     hours_today: ?string, opens_at: ?string}
      */
     public function forVoxPilot(Location $location): array
     {
@@ -89,6 +112,8 @@ class StoreStatus
             'collection_enabled' => $snapshot['collection_enabled'],
             'delivery_lead_time' => $snapshot['delivery_lead_time'],
             'collection_lead_time' => $snapshot['collection_lead_time'],
+            'hours_today' => $snapshot['hours_today'],
+            'opens_at' => $snapshot['opens_at'],
         ];
     }
 
