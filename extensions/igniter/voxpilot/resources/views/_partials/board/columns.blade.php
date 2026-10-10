@@ -40,7 +40,7 @@
                                 data-request="onMoveOrder"
                                 data-request-data="order_id: {{ $card['id'] }}, status_id: {{ $column['next']['id'] }}"
                                 @if($column['accept']) data-request-success="vpAfterAccept({{ $card['id'] }})" @endif>
-                            @lang('igniter.voxpilot::board.move_to', ['status' => $column['next']['name']])
+                            {{ lang('igniter.voxpilot::board.move_to', ['status' => $column['next']['name']]) }}
                         </button>
                     @endif
                 </article>

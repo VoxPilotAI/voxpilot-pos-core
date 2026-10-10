@@ -45,7 +45,9 @@ class VoxPilotOrderController extends Controller
         if ($error = $this->changeError($changes, $order)) {
             return $error;
         }
-        $changes->cancel($order);
+        if (!$changes->cancel($order)) {
+            return $this->changeError($changes, $order->fresh(['status']));
+        }
 
         return response()->json(['data' => $this->changedOrder($order->fresh(['menus', 'status']))]);
     }
@@ -61,6 +63,9 @@ class VoxPilotOrderController extends Controller
         }
 
         $result = $changes->replaceItems($order, $request->validated(), $tenant, $request->attributes->get('voxpilot_token'));
+        if (($result['error'] ?? null) === OrderChangeService::LOCKED) {
+            return $this->changeError($changes, $order->fresh(['status']));
+        }
         if (isset($result['error'])) {
             return response()->json(['error' => [
                 'code' => $result['error'],
@@ -89,11 +94,14 @@ class VoxPilotOrderController extends Controller
             return response()->json(['error' => ['code' => 'VALIDATION_ERROR', 'message' => 'turns are required']], 422);
         }
 
-        $updated = VoxPilotOrderMetadata::where('tenant_id', $request->attributes->get('voxpilot_tenant')->id)
-            ->where('external_order_id', $externalOrderId)
-            ->update(['transcript' => json_encode($turns->all(), JSON_UNESCAPED_UNICODE)]);
+        $metadata = VoxPilotOrderMetadata::where('tenant_id', $request->attributes->get('voxpilot_tenant')->id)
+            ->where('external_order_id', $externalOrderId);
+        // A retry with the same turns changes no row: check the order exists, not the rows changed.
+        if ($found = $metadata->exists()) {
+            $metadata->update(['transcript' => json_encode($turns->all(), JSON_UNESCAPED_UNICODE)]);
+        }
 
-        return $updated
+        return $found
             ? response()->json(['data' => ['turns' => $turns->count()]])
             : response()->json(['error' => ['code' => OrderChangeService::NOT_FOUND, 'message' => 'Order not found.']], 404);
     }
@@ -106,7 +114,7 @@ class VoxPilotOrderController extends Controller
         if (!$changes->canChange($order)) {
             return response()->json(['error' => [
                 'code' => OrderChangeService::LOCKED,
-                'message' => 'The kitchen already accepted this order.',
+                'message' => $order->isCanceled() ? 'This order is already canceled.' : 'The kitchen already accepted this order (or it is paid).',
                 'status' => $order->status?->status_name,
             ]], 409);
         }

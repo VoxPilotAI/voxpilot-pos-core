@@ -38,10 +38,16 @@ class ManualOrderService extends OrderIngestionService
         ])->validate();
 
         $menus = $this->locationMenus($location, array_column($data['items'], 'menu_id'));
+        $sellable = (new MenuAvailability())->items($location)->where('sold_out', false)->pluck('id')->all();
         $matched = [];
         foreach ($data['items'] as $line) {
             /** @var Menu|null $menu */
             $menu = $menus->get((int) $line['menu_id']);
+            if ($menu && !in_array((int) $menu->getKey(), $sellable, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'items' => lang('igniter.voxpilot::orders.manual_unavailable_item', ['item' => $menu->menu_name]),
+                ]);
+            }
             if (!$menu) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'items' => lang('igniter.voxpilot::orders.manual_unknown_item'),

@@ -226,7 +226,8 @@ document.addEventListener('DOMContentLoaded', function () {
         echo.private('tenant.' + tenantId + '.location.' + locationId + '.orders')
             .listen('.voxpilot.order.created', function (data) {
                 chime(); addTicket(data);
-                if (window.vpNotify) window.vpNotify(@json(lang('igniter.voxpilot::board.new_order_notification', ['id' => ':id'])).replace(':id', data.order_id), (data.customer && data.customer.name) || '', window.location.href);
+                // Only the order number: notifications show on lock screens.
+                if (window.vpNotify) window.vpNotify(@json(lang('igniter.voxpilot::board.new_order_notification', ['id' => ':id'])).replace(':id', data.order_id), '', window.location.href);
             })
             .error(function () { failures++; if (failures >= locations.length) setStatus('danger', t.auth_failed); });
     });

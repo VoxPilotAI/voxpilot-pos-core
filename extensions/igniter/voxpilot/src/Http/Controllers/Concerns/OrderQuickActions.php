@@ -55,7 +55,7 @@ trait OrderQuickActions
     {
         $order = $this->findQuickOrder();
         $method = (string) request()->input('method');
-        if (in_array($method, self::PAYMENT_METHODS, true) && !$order->processed) {
+        if (in_array($method, self::PAYMENT_METHODS, true) && !$order->processed && !$order->isCanceled()) {
             $order->markAsPaymentProcessed();
             $this->logStaffPayment($order, $method);
             $order->refresh();
@@ -95,7 +95,7 @@ trait OrderQuickActions
     {
         $order = $this->findQuickOrder();
         $minutes = (int) request()->input('minutes');
-        if (in_array($minutes, self::ETA_STEPS, true)) {
+        if (in_array($minutes, self::ETA_STEPS, true) && !$order->isCanceled()) {
             $ready = now()->addMinutes($minutes);
             $order->order_date = $ready->toDateString();
             $order->order_time = $ready->format('H:i');

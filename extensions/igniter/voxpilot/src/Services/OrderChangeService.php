@@ -35,14 +35,24 @@ class OrderChangeService extends OrderIngestionService
         return $metadata ? Order::withoutGlobalScopes()->with('status')->find($metadata->order_id) : null;
     }
 
+    /** Still in the status VoxPilot orders are created with (the kitchen has not accepted it) and not paid. */
     public function canChange(Order $order): bool
     {
-        return (int) $order->status_id === (int) setting('default_order_status', 1) && !$order->isCanceled();
+        return (int) $order->status_id === $this->getDefaultStatusId() && !$order->isCanceled() && !$order->processed;
     }
 
-    public function cancel(Order $order): void
+    /** Returns false when the kitchen accepted it in the meantime (checked again under a row lock). */
+    public function cancel(Order $order): bool
     {
-        $order->markAsCanceled(['comment' => lang('igniter.voxpilot::orders.canceled_by_phone'), 'notify' => false]);
+        return DB::transaction(function () use ($order): bool {
+            $locked = Order::withoutGlobalScopes()->lockForUpdate()->find($order->order_id);
+            if (!$locked || !$this->canChange($locked)) {
+                return false;
+            }
+            $locked->markAsCanceled(['comment' => lang('igniter.voxpilot::orders.canceled_by_phone'), 'notify' => false]);
+
+            return true;
+        });
     }
 
     /**
@@ -63,12 +73,18 @@ class OrderChangeService extends OrderIngestionService
         $matched = (new MenuMatcher((int) $order->location_id))->matchItems($payload['items'])['matched'];
         $deliveryFee = $this->computeDeliveryFee($request, (int) $order->location_id, $matched);
 
-        DB::transaction(function () use ($order, $matched, $deliveryFee, $type, $payload): void {
+        $changed = DB::transaction(function () use ($order, $matched, $deliveryFee, $type, $payload): bool {
+            // The kitchen may have accepted it while the new items were priced.
+            $order = Order::withoutGlobalScopes()->lockForUpdate()->find($order->order_id);
+            if (!$order || !$this->canChange($order)) {
+                return false;
+            }
             if (class_exists(OrderMenuOptionValue::class)) {
                 OrderMenuOptionValue::where('order_id', $order->order_id)->delete();
             }
             OrderMenu::where('order_id', $order->order_id)->delete();
-            OrderTotal::where('order_id', $order->order_id)->delete();
+            // Only the totals VoxPilot wrote; anything else (coupons, taxes) stays.
+            OrderTotal::where('order_id', $order->order_id)->whereIn('code', ['subtotal', 'delivery', 'total'])->delete();
 
             $order->order_type = $type === 'delivery' ? Order::DELIVERY : Order::COLLECTION;
             $note = lang('igniter.voxpilot::orders.changed_by_phone');
@@ -82,7 +98,12 @@ class OrderChangeService extends OrderIngestionService
 
             $this->createOrderMenus($order, $matched, []);
             $this->createOrderTotals($order, $deliveryFee);
+
+            return true;
         });
+        if (!$changed) {
+            return ['error' => self::LOCKED];
+        }
 
         return ['order' => $order->fresh(['menus', 'status'])];
     }

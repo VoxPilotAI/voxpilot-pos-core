@@ -61,4 +61,6 @@ return [
     'show_conversation' => 'Gespräch anzeigen',
     'turn_caller' => 'Kunde',
     'turn_assistant' => 'KI-Assistent',
+    'unavailable_warning' => '⚠ Gerade nicht verfügbar (mit dem Kunden klären): :items',
+    'manual_unavailable_item' => ':item ist gerade nicht verfügbar.',
 ];

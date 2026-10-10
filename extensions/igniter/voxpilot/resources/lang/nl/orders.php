@@ -61,4 +61,6 @@ return [
     'show_conversation' => 'Gesprek tonen',
     'turn_caller' => 'Klant',
     'turn_assistant' => 'AI-assistent',
+    'unavailable_warning' => '⚠ Nu niet beschikbaar (afstemmen met de klant): :items',
+    'manual_unavailable_item' => ':item is nu niet beschikbaar.',
 ];

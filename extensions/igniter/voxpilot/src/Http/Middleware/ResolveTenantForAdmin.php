@@ -25,10 +25,14 @@ class ResolveTenantForAdmin
 
         $membership = TenantMembership::with('tenant')
             ->where('user_id', $user->user_id)
+            ->orderBy('id')
             ->first();
 
         if ($membership && $membership->tenant) {
             $this->tenantContext->set($membership->tenant);
+        } elseif (!$user->super_user) {
+            // Multi-tenant POS: staff who belong to no restaurant see no orders or locations.
+            $this->tenantContext->denyAll();
         }
 
         return $next($request);

@@ -34,20 +34,41 @@ class OrderIngestionService
 
         $deliveryFee = $this->computeDeliveryFee($payload, $locationId, $matchResult['matched']);
 
-        $result = DB::transaction(function () use ($payload, $tenant, $locationId, $idempotencyKey, $matchResult, $deliveryFee) {
-            $order = $this->createOrder($payload, $tenant, $locationId, $matchResult['unmapped']);
-            $this->createOrderMenus($order, $matchResult['matched'], $matchResult['unmapped']);
-            $this->createOrderTotals($order, $deliveryFee);
-            $metadata = $this->createMetadata($order, $tenant, $locationId, $payload, $idempotencyKey);
+        // The order stays as the caller confirmed it, but the kitchen sees which items it cannot make
+        // now (the assistant's menu may have been a few minutes old).
+        $unavailable = $this->unavailableMatches($matchResult['matched'], $locationId);
 
-            return [
-                'order' => $order->fresh(['menus', 'location']),
-                'metadata' => $metadata,
-                'created' => true,
-                'unmapped' => $matchResult['unmapped'],
-                'price_mismatch' => $this->hasPriceMismatch($matchResult['matched']),
-            ];
-        });
+        try {
+            $result = DB::transaction(function () use ($payload, $tenant, $locationId, $idempotencyKey, $matchResult, $deliveryFee, $unavailable) {
+                $order = $this->createOrder($payload, $tenant, $locationId, $matchResult['unmapped']);
+                if ($unavailable) {
+                    $warning = lang('igniter.voxpilot::orders.unavailable_warning', [
+                        'items' => implode(', ', array_map(fn ($u) => $u['quantity'].'× '.$u['name'], $unavailable)),
+                    ]);
+                    $order->comment = trim($order->comment ? $order->comment."\n".$warning : $warning);
+                    $order->save();
+                }
+                $this->createOrderMenus($order, $matchResult['matched'], $matchResult['unmapped']);
+                $this->createOrderTotals($order, $deliveryFee);
+                $metadata = $this->createMetadata($order, $tenant, $locationId, $payload, $idempotencyKey);
+
+                return [
+                    'order' => $order->fresh(['menus', 'location']),
+                    'metadata' => $metadata,
+                    'created' => true,
+                    'unmapped' => $matchResult['unmapped'],
+                    'price_mismatch' => $this->hasPriceMismatch($matchResult['matched']),
+                ];
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            // The same order arrived twice at once and the other delivery created it: the same answer
+            // as any replay (the transaction above was rolled back).
+            $existing = $this->findExistingOrder($tenant->id, $idempotencyKey);
+            if ($existing) {
+                return ['order' => $existing['order'], 'metadata' => $existing['metadata'], 'created' => false];
+            }
+            throw new \RuntimeException('Order could not be stored');
+        }
 
         try {
             VoxPilotOrderCreated::dispatch(
@@ -74,15 +95,12 @@ class OrderIngestionService
         $matchResult = (new MenuMatcher($locationId))->matchItems($payload['items'] ?? []);
         $deliveryFee = $this->computeDeliveryFee($payload, $locationId, $matchResult['matched']);
 
-        $location = Location::query()->withoutGlobalScopes()->find($locationId);
-        $markedToday = $location ? (new MenuAvailability())->unavailableToday($location) : [];
-        $unavailable = [];
+        $unavailable = $this->unavailableMatches($matchResult['matched'], $locationId);
+        $unavailableNames = array_column($unavailable, 'name');
         $lines = [];
         $subtotal = 0.0;
         foreach ($matchResult['matched'] as $match) {
-            $menu = $match['menu'];
-            if (in_array((int) $menu->menu_id, $markedToday, true) || $menu->outOfStock($locationId) || !$menu->isAvailable()) {
-                $unavailable[] = ['name' => (string) $menu->menu_name, 'quantity' => (int) $match['quantity']];
+            if (in_array((string) $match['menu']->menu_name, $unavailableNames, true)) {
                 continue;
             }
             $lines[] = [
@@ -107,6 +125,27 @@ class OrderIngestionService
             'total' => round($subtotal + (float) $deliveryFee, 2),
             'currency' => (string) rescue(fn () => app('currency')->getUserCurrency(), '', false),
         ];
+    }
+
+    /**
+     * The matched items the location cannot sell now: marked not available today, out of tracked
+     * stock, outside their mealtime or with a disabled ingredient (pos-gateway SPEC-001).
+     *
+     * @return array<int, array{name: string, quantity: int}>
+     */
+    protected function unavailableMatches(array $matched, int $locationId): array
+    {
+        $location = Location::query()->withoutGlobalScopes()->find($locationId);
+        $markedToday = $location ? (new MenuAvailability())->unavailableToday($location) : [];
+        $unavailable = [];
+        foreach ($matched as $match) {
+            $menu = $match['menu'];
+            if (in_array((int) $menu->menu_id, $markedToday, true) || $menu->outOfStock($locationId) || !$menu->isAvailable()) {
+                $unavailable[] = ['name' => (string) $menu->menu_name, 'quantity' => (int) $match['quantity']];
+            }
+        }
+
+        return $unavailable;
     }
 
     protected function findExistingOrder(int $tenantId, string $externalOrderId): ?array

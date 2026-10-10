@@ -61,4 +61,6 @@ return [
     'show_conversation' => 'Voir la conversation',
     'turn_caller' => 'Client',
     'turn_assistant' => 'Assistant IA',
+    'unavailable_warning' => '⚠ Indisponible pour le moment (voir avec le client) : :items',
+    'manual_unavailable_item' => ':item n\'est pas disponible pour le moment.',
 ];

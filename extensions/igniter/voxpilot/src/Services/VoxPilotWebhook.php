@@ -29,7 +29,7 @@ class VoxPilotWebhook
         return in_array($scheme, ['http', 'https'], true) ? $url : null;
     }
 
-    /** Null when the tenant has no VoxPilot URL (nothing to notify). */
+    /** Null when the tenant has no VoxPilot URL (nothing to notify) or the POS has no signing secret. */
     public function send(Tenant $tenant, string $path, string $event, array $payload): ?Response
     {
         $url = self::url($tenant, $path);
@@ -39,13 +39,22 @@ class VoxPilotWebhook
             return null;
         }
 
+        $secret = (string) config('voxpilot.hmac_shared_secret');
+        if (strlen($secret) < 32) {
+            // VoxPilot rejects unsigned events; never send one.
+            Log::error("[voxpilot] {$event} not sent: VOXPILOT_HMAC_SECRET is not set (32+ characters)");
+
+            return null;
+        }
+
         $body = json_encode($payload);
         $timestamp = time();
-        $headers = ['Content-Type' => 'application/json', 'X-VoxPilot-Event' => $event];
-        if ($secret = config('voxpilot.hmac_shared_secret')) {
-            $headers['X-VoxPilot-Signature'] = 'v1='.hash_hmac('sha256', "{$timestamp}.{$body}", $secret);
-            $headers['X-VoxPilot-Timestamp'] = (string) $timestamp;
-        }
+        $headers = [
+            'Content-Type' => 'application/json',
+            'X-VoxPilot-Event' => $event,
+            'X-VoxPilot-Signature' => 'v1='.hash_hmac('sha256', "{$timestamp}.{$body}", $secret),
+            'X-VoxPilot-Timestamp' => (string) $timestamp,
+        ];
 
         return Http::withHeaders($headers)->timeout(10)->withBody($body, 'application/json')->post($url);
     }

@@ -55,6 +55,12 @@ class TenantApiToken extends Model
         return $query->whereNull('revoked_at');
     }
 
+    /** Whether the token was issued for one of these abilities. */
+    public function canAny(string ...$abilities): bool
+    {
+        return (bool) array_intersect($abilities, (array) $this->abilities);
+    }
+
     public function isRevoked(): bool
     {
         return $this->revoked_at !== null;

@@ -22,12 +22,14 @@ class SsoController extends Controller
 {
     public function login(Request $request): RedirectResponse
     {
-        $tenantId = SsoToken::verify((string) $request->query('token'));
+        $token = $request->query('token');
+        $tenantId = SsoToken::verify(is_string($token) ? $token : null);
         $tenant = $tenantId ? Tenant::where('external_tenant_id', $tenantId)->where('status', 'active')->first() : null;
         $owner = $tenant
             ? User::query()
                 ->whereIn('user_id', TenantMembership::where('tenant_id', $tenant->id)->where('role', 'owner')->pluck('user_id'))
                 ->where('status', true)
+                ->orderBy('user_id')
                 ->first()
             : null;
 

@@ -177,7 +177,7 @@
             <button type="button" class="btn btn-light vp-om-cancel"
                     data-request="onSetOrderStatus"
                     data-request-data="order_id: {{ $order->order_id }}, status_id: {{ $canceledId }}"
-                    data-request-confirm="@lang('igniter.voxpilot::orders.cancel_confirm', ['id' => $order->order_id])">
+                    data-request-confirm="{{ lang('igniter.voxpilot::orders.cancel_confirm', ['id' => $order->order_id]) }}">
                 <i class="fa fa-ban"></i> @lang('igniter.voxpilot::orders.cancel')
             </button>
         @endif
@@ -186,7 +186,7 @@
         <button type="button" class="btn btn-primary vp-om-next"
                 data-request="onSetOrderStatus"
                 data-request-data="order_id: {{ $order->order_id }}, status_id: {{ $nextStatus->status_id }}">
-            @lang('igniter.voxpilot::orders.move_to', ['status' => $label($nextStatus->status_name)]) <i class="fa fa-arrow-right"></i>
+            {{ lang('igniter.voxpilot::orders.move_to', ['status' => $label($nextStatus->status_name)]) }} <i class="fa fa-arrow-right"></i>
         </button>
     @endif
 </div>

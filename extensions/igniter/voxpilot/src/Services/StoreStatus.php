@@ -36,7 +36,12 @@ class StoreStatus
         } catch (\Throwable) {
         }
 
-        // The Location model is tenant-scoped, so this only finds the owner's own locations.
+        // The Location model is tenant-scoped, so this only finds the owner's own locations. Without a
+        // restaurant (a platform super user) there is no "own" location to change.
+        if (!app(TenantContext::class)->isActive()) {
+            return null;
+        }
+
         return ($current ? Location::query()->find($current->getKey()) : null)
             ?? Location::query()->orderBy('location_id')->first();
     }
@@ -95,22 +100,24 @@ class StoreStatus
         }
 
         $location = $this->fresh($location);
-        $own = $this->own($location);
-        $base = $own['busy_base'] ?? null;
-        if (!$base) {
-            $base = [
-                'delivery' => (int) $location->getSettings('delivery.lead_time', 15),
-                'collection' => (int) $location->getSettings('collection.lead_time', 15),
-            ];
-        }
+        $current = [
+            'delivery' => (int) $location->getSettings('delivery.lead_time', 15),
+            'collection' => (int) $location->getSettings('collection.lead_time', 15),
+        ];
+        // The normal lead times are decided under the row lock, so two changes at once never save
+        // already raised times as the normal ones.
+        $base = null;
+        $this->update($location, self::SETTINGS, function (array $data) use ($minutes, $current, &$base) {
+            $base = $data['busy_base'] ?? $current;
+            $data['busy_minutes'] = $minutes;
+            $data['busy_base'] = $minutes > 0 ? $base : null;
+
+            return $data;
+        });
 
         foreach (self::ORDER_TYPES as $type) {
             $this->write($location, $type, ['lead_time' => (int) $base[$type] + $minutes]);
         }
-
-        $this->write($location, self::SETTINGS, $minutes > 0
-            ? ['busy_minutes' => $minutes, 'busy_base' => $base]
-            : ['busy_minutes' => 0, 'busy_base' => null]);
 
         StoreChangeNotifier::notify($location, 'store.changed');
     }
