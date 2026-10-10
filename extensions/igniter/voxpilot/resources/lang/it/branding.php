@@ -2,6 +2,7 @@
 
 return [
     'landing' => [
+        'language' => 'Lingua',
         'meta_title' => 'VoxPilot POS · Ordini in tempo reale per il tuo ristorante',
         'meta_description' => 'Il punto cassa collegato al tuo assistente telefonico IA VoxPilot. Gli ordini confermati durante la chiamata arrivano subito, pronti da preparare.',
         'badge' => 'Punto cassa di VoxPilot',

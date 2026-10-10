@@ -6,6 +6,7 @@ namespace Igniter\VoxPilot\Http\Controllers;
 
 use Igniter\Admin\Classes\AdminController;
 use Igniter\Admin\Facades\AdminMenu;
+use Igniter\Admin\Facades\Template;
 use Igniter\Local\Models\Location;
 use Igniter\VoxPilot\Models\Installation;
 use Igniter\VoxPilot\Models\Tenant;
@@ -27,8 +28,18 @@ class Integrations extends AdminController
         AdminMenu::setContext('voxpilot', 'tools');
     }
 
+    /** The connection error in the admin's language (the exception message is for logs). */
+    protected static function installationError(InstallationException $e): string
+    {
+        $key = 'igniter.voxpilot::integrations.err_'.$e->errorCode;
+
+        return lang($key) !== $key ? lang($key) : lang('igniter.voxpilot::integrations.err_generic');
+    }
+
     public function index(): mixed
     {
+        Template::setTitle(lang('igniter.voxpilot::integrations.title'));
+
         $tenantId = $this->resolveTenantId();
 
         $this->vars['tokens'] = $tenantId
@@ -55,7 +66,7 @@ class Integrations extends AdminController
     {
         $tenantId = $this->resolveTenantId();
         if (!$tenantId) {
-            flash()->error('No tenant found. Run: php artisan voxpilot:bootstrap-tenant');
+            flash()->error(lang('igniter.voxpilot::integrations.err_no_tenant'));
             return back();
         }
 
@@ -67,7 +78,7 @@ class Integrations extends AdminController
 
             return redirect()->away($result['authorization_url']);
         } catch (InstallationException $e) {
-            flash()->error($e->getMessage());
+            flash()->error(self::installationError($e));
             return back();
         }
     }
@@ -77,21 +88,21 @@ class Integrations extends AdminController
     {
         $tenantId = $this->resolveTenantId();
         if (!$tenantId) {
-            flash()->error('No tenant found.');
+            flash()->error(lang('igniter.voxpilot::integrations.err_no_tenant'));
             return back();
         }
 
         $tenant = Tenant::find($tenantId);
         if (!$tenant?->external_tenant_id) {
-            flash()->error('Tenant is missing external_tenant_id; cannot disconnect.');
+            flash()->error(lang('igniter.voxpilot::integrations.err_no_external_id'));
             return back();
         }
 
         try {
             app(InstallationService::class)->deactivate((string) $tenant->external_tenant_id);
-            flash()->success('VoxPilot disconnected. Your POS tenant was kept.');
+            flash()->success(lang('igniter.voxpilot::integrations.disconnected'));
         } catch (InstallationException $e) {
-            flash()->error($e->getMessage());
+            flash()->error(self::installationError($e));
         }
 
         return redirect()->to(admin_url('igniter/voxpilot/integrations'));
@@ -101,7 +112,7 @@ class Integrations extends AdminController
     {
         $tenantId = $this->resolveTenantId();
         if (!$tenantId) {
-            flash()->error('No tenant found. Run: php artisan voxpilot:bootstrap-tenant');
+            flash()->error(lang('igniter.voxpilot::integrations.err_no_tenant'));
             return back();
         }
 
@@ -117,7 +128,7 @@ class Integrations extends AdminController
                 ->where('tenant_id', $tenantId)
                 ->exists();
             if (!$locationBelongs) {
-                flash()->error('Selected location does not belong to your tenant.');
+                flash()->error(lang('igniter.voxpilot::integrations.err_location'));
                 return back();
             }
         }
@@ -129,7 +140,7 @@ class Integrations extends AdminController
             createdByUserId: $this->getUser()->user_id,
         );
 
-        flash()->success('API token created. Copy it now — it will not be shown again.');
+        flash()->success(lang('igniter.voxpilot::integrations.token_created_flash'));
 
         return redirect()->to(admin_url('igniter/voxpilot/integrations'))
             ->with('voxpilot_new_token', $result['plain_text']);

@@ -40,4 +40,12 @@ return [
     'total' => 'Totaal',
     'best_sellers' => 'Bestsellers',
     'sold' => ':count verkocht',
+    'widget_day_summary' => 'VoxPilot · Dagafsluiting',
+    'day_close' => 'Vandaag tot nu toe',
+    'day_close_sub' => '{1} 1 bestelling · :phone via AI-telefoon|[0,*] :count bestellingen · :phone via AI-telefoon',
+    'by_payment' => 'Per betaalwijze',
+    'by_type' => 'Per soort',
+    'unpaid' => 'Niet betaald',
+    'canceled' => 'Geannuleerd',
+    'no_orders_today' => 'Vandaag nog geen bestellingen.',
 ];

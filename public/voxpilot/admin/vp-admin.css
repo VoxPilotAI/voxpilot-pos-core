@@ -111,6 +111,11 @@ html[data-bs-theme] .navbar-top {
     backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--vp-border) !important;
     min-height: 64px;
+    /* backdrop-filter makes the header its own stacking context: lift it over the page so its
+       dropdowns (user menu, locations, notifications) open above the dashboard widgets. Bootstrap
+       modals (1055) and offcanvas (1045) stay above it. */
+    position: relative;
+    z-index: 1030;
 }
 html[data-bs-theme] .navbar-top .logo-svg { height: 26px; width: auto; }
 html[data-bs-theme] .navbar-top .nav-link { color: var(--vp-muted); border-radius: 10px; }
@@ -497,3 +502,99 @@ html[data-bs-theme] body.page-login .container-fluid, html[data-bs-theme] body.p
     #vp-order-modal .vp-print-ticket { position: fixed; inset: 0; padding: 12mm; font-size: 12pt; }
     #vp-order-modal .vp-print-ticket .vp-pill { border: 1px solid #000; }
 }
+
+/* Store bar: what the restaurant takes right now (board) */
+.vp-store { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; margin: 16px 0; padding: 12px 16px; border-radius: 16px; border: 1px solid var(--vp-border); background: var(--vp-panel); box-shadow: var(--vp-shadow); }
+.vp-store-state { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.vp-store-times { font-size: 13px; color: var(--vp-muted); font-variant-numeric: tabular-nums; }
+.vp-store-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+.vp-store-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.vp-store-label { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vp-muted); }
+.vp-segmented label { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin: 0; padding: 0 14px; border-radius: 9px; color: var(--vp-muted); font-size: 13px; font-weight: 500; cursor: pointer; }
+.vp-segmented label.active { background: var(--vp-primary-soft); color: var(--vp-primary); font-weight: 600; }
+.vp-segmented label:has(input:focus-visible), .vp-segmented button:focus-visible { outline: 2px solid var(--vp-primary); outline-offset: 1px; }
+.vp-count-danger { color: #fff; background: var(--vp-danger); margin-left: 4px; }
+
+/* Switch button (delivery/pickup, sold out) */
+.vp-switch { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--vp-border-strong); background: var(--vp-panel); color: var(--vp-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.vp-switch.on { color: var(--vp-fg); }
+.vp-switch:focus-visible { outline: 2px solid var(--vp-primary); outline-offset: 2px; }
+.vp-switch-track { position: relative; width: 34px; height: 20px; border-radius: 999px; background: var(--vp-track); border: 1px solid var(--vp-border-strong); transition: background .15s; }
+.vp-switch-track span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--vp-muted); transition: transform .15s, background .15s; }
+.vp-switch.on .vp-switch-track { background: var(--vp-success-soft); border-color: var(--vp-success); }
+.vp-switch.on .vp-switch-track span { transform: translateX(14px); background: var(--vp-success); }
+
+/* Per-device settings menu */
+.vp-device-menu { min-width: 240px; padding: 8px; border-radius: 14px; }
+.vp-device-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; margin: 0; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--vp-fg); font-size: 14px; text-align: left; cursor: pointer; }
+.vp-device-option:hover { background: var(--vp-panel-2); }
+.vp-device-option.on, .vp-device-option.on .fa { color: var(--vp-success); }
+
+/* Order modal: customer history, payment and driver */
+.vp-om-history-sum { margin: 0 0 6px; font-size: 14px; }
+.vp-om-history { margin: 0; padding: 0; list-style: none; }
+.vp-om-history li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--vp-border); font-size: 14px; }
+.vp-om-history li .vp-card-open { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; text-align: left; }
+.vp-om-history li .vp-card-id { font-size: 14px; }
+.vp-om-history li span:last-child { white-space: nowrap; color: var(--vp-muted); font-variant-numeric: tabular-nums; }
+.vp-om-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.vp-om-tools .vp-segmented { flex-wrap: wrap; }
+.vp-om-inline { display: flex; flex-wrap: wrap; gap: 8px; }
+.vp-om-inline .form-select { width: auto; min-width: 180px; flex: 1; }
+
+/* Sold-out list */
+.vp-avail { margin: 0; padding: 0; list-style: none; }
+.vp-avail li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--vp-border); }
+.vp-avail li[hidden] { display: none; }
+.vp-avail li > div { display: flex; flex-direction: column; min-width: 0; }
+.vp-avail li .vp-switch { min-width: 150px; justify-content: space-between; }
+
+/* Manual order form */
+.vp-manual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.vp-field { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.vp-field[hidden] { display: none; }
+.vp-field > span { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vp-muted); }
+.vp-manual-lines { display: flex; flex-direction: column; gap: 8px; }
+.vp-manual-line { display: grid; grid-template-columns: minmax(0, 1fr) 84px 44px; gap: 8px; }
+.vp-manual-add { align-self: flex-start; margin-top: 4px; }
+
+/* Close of the day widget */
+.vp-day-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+
+/* Kitchen mode (?kds=1): the board alone, large type, for a wall screen or tablet */
+body.vp-kds .navbar-top, body.vp-kds .sidebar { display: none !important; }
+body.vp-kds .page-wrapper { padding-bottom: 0 !important; }
+body.vp-kds .page-content { padding: 12px 16px !important; }
+body.vp-kds .vp-page-sub, body.vp-kds .vp-hide-kds { display: none !important; }
+body.vp-kds .vp-board { grid-auto-columns: minmax(320px, 1fr); }
+body.vp-kds .vp-card-id { font-size: 22px; }
+body.vp-kds .vp-card-customer { font-size: 15px; }
+body.vp-kds .vp-card-lines { font-size: 17px; gap: 6px; }
+body.vp-kds .vp-card-lines li span:first-child { font-weight: 600; }
+body.vp-kds .vp-card-note { font-size: 15px; }
+body.vp-kds .vp-card-action { min-height: 52px; font-size: 16px; }
+.vp-segmented button, .vp-segmented label { white-space: nowrap; }
+@media (max-width: 576px) {
+    .vp-store-controls, .vp-store-group { width: 100%; }
+    .vp-store .vp-segmented { width: 100%; overflow-x: auto; }
+    .vp-store .vp-segmented button { flex: 1; padding: 0 8px; }
+    .vp-store .vp-switch { flex: 1; justify-content: space-between; }
+    .vp-manual-line { grid-template-columns: minmax(0, 1fr) 64px 44px; }
+}
+
+/* Header language switcher */
+.vp-language .nav-link { display: inline-flex; align-items: center; gap: 6px; }
+.vp-language-code { display: inline-grid; place-items: center; min-width: 28px; height: 20px; padding: 0 5px; border-radius: 6px; background: var(--vp-panel-2); color: var(--vp-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+.vp-device-option.on .vp-language-code { background: var(--vp-success-soft); color: var(--vp-success); }
+.vp-language-team { align-items: flex-start; min-height: 0; margin-top: 6px; padding-top: 10px; padding-bottom: 8px; border-top: 1px solid var(--vp-border); border-radius: 0; }
+.vp-language-team input { margin-top: 3px; flex-shrink: 0; }
+.vp-language-team small { display: block; font-size: 12px; color: var(--vp-muted); line-height: 1.4; }
+.vp-om-help { margin: 6px 0 0; }
+.vp-om-transcript summary { cursor: pointer; list-style: none; }
+.vp-om-transcript summary::-webkit-details-marker { display: none; }
+.vp-om-transcript-body { max-height: 240px; overflow-y: auto; padding: 12px 14px; border-radius: 12px; background: var(--vp-panel-2); font-size: 13px; line-height: 1.55; white-space: pre-wrap; color: var(--vp-fg); }
+@media print { .vp-om-transcript { display: none; } }
+.vp-om-transcript-body { white-space: normal; }
+.vp-turn { margin: 0 0 8px; white-space: pre-wrap; }
+.vp-turn strong { display: block; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vp-muted); }
+.vp-turn-caller strong { color: var(--vp-accent); }

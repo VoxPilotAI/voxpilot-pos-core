@@ -6,6 +6,7 @@ namespace Igniter\VoxPilot\Http\Middleware;
 
 use Closure;
 use Igniter\VoxPilot\Models\TenantApiToken;
+use Igniter\VoxPilot\Services\LanguagePreference;
 use Igniter\VoxPilot\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,6 +41,10 @@ class ResolveTenantFromToken
         $token->markAsUsed();
 
         $this->tenantContext->set($tenant, $token->default_location_id);
+        // Notes written on orders (changed by phone, not available now…) in the restaurant team's language.
+        if ($locale = (new LanguagePreference())->tenantLocale($tenant)) {
+            app()->setLocale($locale);
+        }
 
         $request->attributes->set('voxpilot_tenant', $tenant);
         $request->attributes->set('voxpilot_token', $token);

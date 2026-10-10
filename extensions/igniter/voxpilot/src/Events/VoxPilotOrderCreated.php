@@ -6,6 +6,7 @@ namespace Igniter\VoxPilot\Events;
 
 use Igniter\Cart\Models\Order;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
+use Igniter\VoxPilot\Support\OrderLine;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -55,12 +56,14 @@ class VoxPilotOrderCreated implements ShouldBroadcast
             ],
             'fulfillment_type' => $fulfillmentType,
             'items' => $menus->map(fn($menu) => [
-                'name' => $menu->name,
+                'name' => OrderLine::name($menu),
                 'quantity' => $menu->quantity,
                 'subtotal' => (float) $menu->subtotal,
+                'subtotal_label' => currency_format($menu->subtotal),
                 'notes' => $menu->comment ?: null,
             ])->values()->toArray(),
             'order_total' => (float) $order->order_total,
+            'order_total_label' => currency_format($order->order_total),
             'notes' => $order->comment,
             'status' => 'Pending',
             'created_at' => $order->created_at?->toIso8601String(),

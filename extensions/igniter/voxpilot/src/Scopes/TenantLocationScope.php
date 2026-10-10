@@ -15,6 +15,13 @@ class TenantLocationScope implements Scope
     {
         $context = app(TenantContext::class);
 
+        if ($context->deniesAll()) {
+            // Fail closed: an admin who belongs to no restaurant sees no restaurant's data.
+            $builder->whereRaw('1 = 0');
+
+            return;
+        }
+
         if (!$context->isActive()) {
             return;
         }

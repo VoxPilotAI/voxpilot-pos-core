@@ -32,9 +32,10 @@ class LocalizedMailHelper extends MailHelper
         $mailable = AnonymousTemplateMailable::create($view)->applyCallback($callback)->withSerializedData($vars);
 
         $staff = $vars['staff'] ?? null;
-        if ($staff instanceof User && ($locale = Locale::match($staff->getLocale()))) {
-            $mailable->locale($locale);
-        }
+        $locale = $staff instanceof User ? Locale::match($staff->getLocale()) : null;
+        // Anyone else (an order alert, a customer email) gets the language of the request that sent
+        // it: a queued mail would otherwise be rendered in the worker's default, English.
+        $mailable->locale($locale ?? app()->getLocale());
 
         return $mailable;
     }

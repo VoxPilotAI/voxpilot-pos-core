@@ -6,7 +6,10 @@ namespace Igniter\VoxPilot\Http\Controllers;
 
 use Igniter\Cart\Models\Menu;
 use Igniter\Cart\Models\MenuItemOption;
+use Igniter\Local\Models\Location;
+use Igniter\VoxPilot\Services\MenuAvailability;
 use Igniter\VoxPilot\Services\OrderIngestionService;
+use Igniter\VoxPilot\Services\StoreStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -32,8 +35,28 @@ class VoxPilotMenuController extends Controller
                     ->where($locationTable . '.location_id', $locationId);
             })
             ->where('menu_status', true)
-            ->with(['categories'])
+            ->with(['categories', 'mealtimes', 'ingredients', 'stocks'])
             ->get();
+
+        // What the restaurant can sell right now: items marked not available today, out of tracked
+        // stock, outside their mealtime or with a disabled ingredient are listed apart, so the
+        // assistant can say "not today" instead of offering them (pos-gateway SPEC-001).
+        $location = Location::query()->withoutGlobalScopes()->find($locationId);
+        $marked = $location ? (new MenuAvailability())->unavailableToday($location) : [];
+        $unavailable = [];
+        $menus = $menus->filter(function (Menu $menu) use ($locationId, $marked, &$unavailable) {
+            $reason = match (true) {
+                in_array((int) $menu->menu_id, $marked, true) => 'not_available_today',
+                $menu->outOfStock($locationId) => 'out_of_stock',
+                !$menu->isAvailable() => 'not_available_now',
+                default => null,
+            };
+            if ($reason) {
+                $unavailable[] = ['menu_id' => (int) $menu->menu_id, 'name' => (string) $menu->menu_name, 'reason' => $reason];
+            }
+
+            return $reason === null;
+        });
 
         $items = $menus->map(function (Menu $menu) {
             $basePrice = (float) $menu->getBuyablePrice();
@@ -94,6 +117,8 @@ class VoxPilotMenuController extends Controller
                 'location_id' => $locationId,
                 'items_count' => $items->count(),
                 'items' => $items->values(),
+                'unavailable' => $unavailable,
+                'store' => $location ? (new StoreStatus())->forVoxPilot($location) : null,
             ],
         ]);
     }
