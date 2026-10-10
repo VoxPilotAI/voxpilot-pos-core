@@ -56,6 +56,17 @@
         </dl>
     </div>
 
+    @if($transcript)
+        <details class="vp-om-section vp-om-transcript">
+            <summary class="vp-om-section-title"><i class="fa fa-comment-dots"></i> @lang('igniter.voxpilot::orders.conversation') · @lang('igniter.voxpilot::orders.show_conversation')</summary>
+            <div class="vp-om-transcript-body">
+                @foreach($transcript as $turn)
+                    <p class="vp-turn vp-turn-{{ $turn['role'] === 'caller' ? 'caller' : 'assistant' }}"><strong>{{ $turn['role'] === 'caller' ? lang('igniter.voxpilot::orders.turn_caller') : lang('igniter.voxpilot::orders.turn_assistant') }}</strong> {{ $turn['content'] }}</p>
+                @endforeach
+            </div>
+        </details>
+    @endif
+
     @if($order->telephone)
         <div class="vp-om-section">
             <div class="vp-om-section-title">@lang('igniter.voxpilot::orders.customer_history')</div>

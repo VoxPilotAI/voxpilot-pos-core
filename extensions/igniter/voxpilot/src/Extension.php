@@ -17,6 +17,7 @@ use Igniter\System\Classes\BaseExtension;
 use Igniter\VoxPilot\Console\ApplyBranding;
 use Igniter\VoxPilot\DashboardWidgets;
 use Igniter\VoxPilot\Console\BootstrapTenant;
+use Igniter\VoxPilot\Http\Controllers\SsoController;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantForAdmin;
 use Igniter\VoxPilot\Http\Middleware\ResolveTenantFromToken;
 use Igniter\VoxPilot\Http\Middleware\StorefrontLanding;
@@ -61,6 +62,7 @@ class Extension extends BaseExtension
         $this->registerApiRoutes();
         $this->registerProvisioningRoutes();
         $this->registerOAuthRoutes();
+        $this->registerSsoRoute();
         $this->registerChannels();
         $this->registerOrderStatusListener();
         $this->registerStaffMembership();
@@ -291,6 +293,14 @@ class Extension extends BaseExtension
         Route::prefix('api/voxpilot')
             ->middleware(['api', VerifyProvisioningSecret::class])
             ->group(__DIR__.'/../routes/oauth.php');
+    }
+
+    /** pos-gateway SPEC-006: "Open POS" from VoxPilot (signed one-time token). */
+    protected function registerSsoRoute(): void
+    {
+        Route::middleware(['web', 'throttle:20,1'])
+            ->get('voxpilot/sso', [SsoController::class, 'login'])
+            ->name('voxpilot.sso');
     }
 
     protected function registerChannels(): void

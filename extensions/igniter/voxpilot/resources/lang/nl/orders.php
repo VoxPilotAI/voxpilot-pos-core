@@ -55,4 +55,10 @@ return [
     'eta_minutes' => ':min min',
     'eta_at' => 'Klaar om :time',
     'eta_help' => 'Als de klant tijdens het gesprek akkoord ging, krijgt hij deze tijd per sms of WhatsApp.',
+    'canceled_by_phone' => 'Telefonisch geannuleerd door de klant (VoxPilot-assistent).',
+    'changed_by_phone' => '✏ Telefonisch gewijzigd door de klant',
+    'conversation' => 'Gespreksverslag',
+    'show_conversation' => 'Gesprek tonen',
+    'turn_caller' => 'Klant',
+    'turn_assistant' => 'AI-assistent',
 ];

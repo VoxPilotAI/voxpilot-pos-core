@@ -55,4 +55,10 @@ return [
     'eta_minutes' => ':min Min.',
     'eta_at' => 'Fertig um :time',
     'eta_help' => 'Hat der Kunde im Anruf zugestimmt, bekommt er diese Uhrzeit per SMS oder WhatsApp.',
+    'canceled_by_phone' => 'Vom Kunden telefonisch storniert (VoxPilot-Assistent).',
+    'changed_by_phone' => '✏ Vom Kunden telefonisch geändert',
+    'conversation' => 'Gesprächsverlauf',
+    'show_conversation' => 'Gespräch anzeigen',
+    'turn_caller' => 'Kunde',
+    'turn_assistant' => 'KI-Assistent',
 ];

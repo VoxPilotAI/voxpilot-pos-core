@@ -195,6 +195,28 @@ trait OrderQuickActions
         ];
     }
 
+    /**
+     * The call's conversation: the turns VoxPilot sent at call end (JSON), or the plain text it sent
+     * with the order (a summary) as one assistant turn. Null when there is none.
+     *
+     * @return array<int, array{role: string, content: string}>|null
+     */
+    public static function transcriptTurns(?string $stored): ?array
+    {
+        $stored = trim((string) $stored);
+        if ($stored === '') {
+            return null;
+        }
+        $turns = json_decode($stored, true);
+        if (is_array($turns) && array_is_list($turns)) {
+            $turns = array_values(array_filter($turns, fn ($t) => is_array($t) && isset($t['role'], $t['content'])));
+
+            return $turns ?: null;
+        }
+
+        return [['role' => 'assistant', 'content' => $stored]];
+    }
+
     /** Delivery address: TastyIgniter's address, or the line VoxPilot puts in the comment. */
     public static function deliveryAddress(Order $order): ?string
     {
@@ -225,6 +247,7 @@ trait OrderQuickActions
         $next = $this->nextStatusId($order);
 
         $address = self::deliveryAddress($order);
+        $metadata = VoxPilotOrderMetadata::where('order_id', $order->order_id)->first();
 
         return $this->makePartial('ordermodal', [
             'order' => $order,
@@ -235,7 +258,9 @@ trait OrderQuickActions
             'paymentMethods' => self::PAYMENT_METHODS,
             'etaSteps' => self::ETA_STEPS,
             'readyAt' => VoxPilotStatusNotifier::readyAt($order),
-            'phone' => VoxPilotOrderMetadata::where('order_id', $order->order_id)->exists(),
+            'phone' => (bool) $metadata,
+            // The call that placed it (pos-gateway SPEC-006), so the staff can check what was said.
+            'transcript' => self::transcriptTurns($metadata?->transcript),
             'statuses' => $this->quickStatuses()->reject(fn ($s) => (int) $s->status_id === $canceled)->values(),
             'nextStatus' => $next ? $this->quickStatuses()->firstWhere('status_id', $next) : null,
             'canceledId' => $canceled,

@@ -590,3 +590,11 @@ body.vp-kds .vp-card-action { min-height: 52px; font-size: 16px; }
 .vp-language-team input { margin-top: 3px; flex-shrink: 0; }
 .vp-language-team small { display: block; font-size: 12px; color: var(--vp-muted); line-height: 1.4; }
 .vp-om-help { margin: 6px 0 0; }
+.vp-om-transcript summary { cursor: pointer; list-style: none; }
+.vp-om-transcript summary::-webkit-details-marker { display: none; }
+.vp-om-transcript-body { max-height: 240px; overflow-y: auto; padding: 12px 14px; border-radius: 12px; background: var(--vp-panel-2); font-size: 13px; line-height: 1.55; white-space: pre-wrap; color: var(--vp-fg); }
+@media print { .vp-om-transcript { display: none; } }
+.vp-om-transcript-body { white-space: normal; }
+.vp-turn { margin: 0 0 8px; white-space: pre-wrap; }
+.vp-turn strong { display: block; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vp-muted); }
+.vp-turn-caller strong { color: var(--vp-accent); }
