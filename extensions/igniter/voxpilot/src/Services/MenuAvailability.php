@@ -86,6 +86,8 @@ class MenuAvailability
             return $data;
         });
 
+        StoreChangeNotifier::notify($location, 'menu.changed');
+
         return $menu;
     }
 

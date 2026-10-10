@@ -64,6 +64,29 @@ class StoreStatus
         ];
     }
 
+    /**
+     * The store block of the menu VoxPilot reads (GET /api/voxpilot/menu): whether to take orders
+     * now, extra wait and which order types are on.
+     *
+     * @return array{open: bool, paused: bool, within_hours: ?bool, busy_minutes: int,
+     *     delivery_enabled: bool, collection_enabled: bool, delivery_lead_time: int, collection_lead_time: int}
+     */
+    public function forVoxPilot(Location $location): array
+    {
+        $snapshot = $this->snapshot($location);
+
+        return [
+            'open' => $snapshot['open'],
+            'paused' => $snapshot['paused'],
+            'within_hours' => $snapshot['within_hours'],
+            'busy_minutes' => $snapshot['busy_minutes'],
+            'delivery_enabled' => $snapshot['delivery_enabled'],
+            'collection_enabled' => $snapshot['collection_enabled'],
+            'delivery_lead_time' => $snapshot['delivery_lead_time'],
+            'collection_lead_time' => $snapshot['collection_lead_time'],
+        ];
+    }
+
     /** Adds $minutes to both lead times (0 = back to normal). */
     public function setBusy(Location $location, int $minutes): void
     {
@@ -88,6 +111,8 @@ class StoreStatus
         $this->write($location, self::SETTINGS, $minutes > 0
             ? ['busy_minutes' => $minutes, 'busy_base' => $base]
             : ['busy_minutes' => 0, 'busy_base' => null]);
+
+        StoreChangeNotifier::notify($location, 'store.changed');
     }
 
     /** Pauses new orders until the end of today, or reopens. */
@@ -96,6 +121,8 @@ class StoreStatus
         $this->write($location, self::SETTINGS, [
             'closed_until' => $paused ? now()->endOfDay()->toIso8601String() : null,
         ]);
+
+        StoreChangeNotifier::notify($location, 'store.changed');
     }
 
     public function setOrderType(Location $location, string $type, bool $enabled): void
@@ -105,6 +132,8 @@ class StoreStatus
         }
 
         $this->write($location, $type, ['is_enabled' => $enabled ? 1 : 0]);
+
+        StoreChangeNotifier::notify($location, 'store.changed');
     }
 
     /** The location's own `voxpilot` settings. */

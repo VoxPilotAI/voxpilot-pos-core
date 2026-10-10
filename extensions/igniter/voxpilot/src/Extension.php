@@ -8,7 +8,9 @@ use Igniter\Admin\Facades\Template;
 use Igniter\User\Facades\AdminAuth;
 use Igniter\User\Models\User;
 use Igniter\Admin\Http\Controllers\Dashboard;
+use Igniter\Cart\Models\Menu;
 use Igniter\Cart\Models\Order;
+use Igniter\Cart\Models\Stock;
 use Igniter\Local\Models\Location;
 use Igniter\System\Helpers\MailHelper;
 use Igniter\System\Classes\BaseExtension;
@@ -27,6 +29,7 @@ use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Scopes\TenantLocationScope;
 use Igniter\VoxPilot\Scopes\TenantOrderScope;
 use Igniter\VoxPilot\Services\LanguagePreference;
+use Igniter\VoxPilot\Services\StoreChangeNotifier;
 use Igniter\VoxPilot\Services\TenantContext;
 use Igniter\VoxPilot\Support\Locale;
 use Illuminate\Support\Facades\Broadcast;
@@ -62,6 +65,7 @@ class Extension extends BaseExtension
         $this->registerChannels();
         $this->registerOrderStatusListener();
         $this->registerStaffMembership();
+        $this->registerMenuChangeEvents();
     }
 
     #[Override]
@@ -228,6 +232,26 @@ class Extension extends BaseExtension
         });
 
         TenantMembership::created(fn (TenantMembership $membership) => (new LanguagePreference())->applyTenantDefault($membership));
+    }
+
+    /**
+     * Menu edits in the TastyIgniter admin (an item changed, removed, or its tracked stock ran out or
+     * came back) tell VoxPilot to read the menu again (pos-gateway SPEC-001).
+     */
+    protected function registerMenuChangeEvents(): void
+    {
+        $menuChanged = fn (Menu $menu) => StoreChangeNotifier::notifyMenuLocations($menu->locations()->withoutGlobalScopes()->get());
+        Menu::saved($menuChanged);
+        Menu::deleted($menuChanged);
+
+        Stock::saved(function (Stock $stock): void {
+            $wasOut = (bool) $stock->getOriginal('is_tracked') && (int) $stock->getOriginal('quantity') <= 0;
+            $isOut = $stock->is_tracked && (int) $stock->quantity <= 0;
+            $location = $stock->location_id ? Location::withoutGlobalScopes()->find($stock->location_id) : null;
+            if ($location && ($wasOut !== $isOut || $stock->wasChanged(['out_of_stock_type', 'out_of_stock_until']))) {
+                StoreChangeNotifier::notify($location, 'menu.changed');
+            }
+        });
     }
 
     /** Cache-buster for public/voxpilot/admin files: their modification time. */
