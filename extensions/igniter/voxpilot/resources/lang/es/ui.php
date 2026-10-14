@@ -1,0 +1,33 @@
+<?php
+
+// Texts of the admin's JavaScript (VoxPilot and TastyIgniter scripts), sent to vp-admin.js.
+return [
+    'theme_toggle' => 'Cambiar entre modo claro y oscuro',
+    'this_month' => 'Este mes',
+    'last_month' => 'Mes pasado',
+    'lifetime' => 'Todo el tiempo',
+    'custom_range' => 'Rango personalizado',
+    'select_single' => 'Selecciona un solo elemento.',
+    'select_images' => 'Selecciona las imágenes que quieres insertar.',
+    'cancel_translation' => '¿Seguro que quieres dejar de editar esta traducción?',
+    'map_center' => 'Al mapa le faltan las coordenadas del centro: escribe una dirección y guarda.',
+    'map_library' => 'Falta la biblioteca de Google Maps: agrega la clave de la API de Maps en la configuración general del sistema.',
+    'previous' => 'Anterior',
+    'next' => 'Siguiente',
+    'toggle_dropdown' => 'Mostrar opciones',
+    'loading' => 'Cargando…',
+    'toggle_navigation' => 'Mostrar u ocultar navegación',
+    'remove' => 'Quitar',
+    'sort' => 'Ordenar',
+    'filter' => 'Filtrar',
+    'choose_color' => 'Elige tu color',
+    'resize' => 'Cambiar tamaño',
+    'choices_no_results' => 'No se encontraron resultados',
+    'choices_no_choices' => 'No hay opciones para elegir',
+    'choices_select' => 'Pulsa para seleccionar',
+    'choices_unique' => 'Solo se pueden agregar valores únicos',
+    'choices_custom_add' => 'Solo se pueden agregar valores que cumplan ciertas condiciones',
+    'choices_add' => 'Pulsa Enter para agregar ":value"',
+    'choices_max' => 'Solo se pueden agregar :count valores',
+    'choices_remove' => 'Quitar elemento: :value',
+];

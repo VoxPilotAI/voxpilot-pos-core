@@ -37,7 +37,7 @@ class IncomingOrders extends AdminController
         $tenantId = $tenant->id;
         $locations = Location::where('tenant_id', $tenantId)->get();
 
-        $recentOrders = VoxPilotOrderMetadata::with(['order', 'order.menus', 'order.location', 'order.status'])
+        $recentOrders = VoxPilotOrderMetadata::with(['order', 'order.menus.menu_options', 'order.location', 'order.status'])
             ->where('tenant_id', $tenantId)
             ->orderByDesc('created_at')
             ->limit(50)

@@ -1,0 +1,33 @@
+<?php
+
+// Texts of the admin's JavaScript (VoxPilot and TastyIgniter scripts), sent to vp-admin.js.
+return [
+    'theme_toggle' => 'Basculer entre le mode clair et sombre',
+    'this_month' => 'Ce mois-ci',
+    'last_month' => 'Le mois dernier',
+    'lifetime' => 'Depuis le début',
+    'custom_range' => 'Période personnalisée',
+    'select_single' => 'Veuillez sélectionner un seul élément.',
+    'select_images' => 'Veuillez sélectionner les images à insérer.',
+    'cancel_translation' => 'Voulez-vous vraiment annuler la modification de cette traduction ?',
+    'map_center' => 'Il manque les coordonnées du centre de la carte : saisissez une adresse puis enregistrez.',
+    'map_library' => 'La bibliothèque Google Maps est absente : indiquez la clé d’API Maps dans les paramètres généraux du système.',
+    'previous' => 'Précédent',
+    'next' => 'Suivant',
+    'toggle_dropdown' => 'Afficher les options',
+    'loading' => 'Chargement…',
+    'toggle_navigation' => 'Afficher ou masquer la navigation',
+    'remove' => 'Retirer',
+    'sort' => 'Trier',
+    'filter' => 'Filtrer',
+    'choose_color' => 'Choisissez votre couleur',
+    'resize' => 'Redimensionner',
+    'choices_no_results' => 'Aucun résultat trouvé',
+    'choices_no_choices' => 'Aucun choix disponible',
+    'choices_select' => 'Appuyez pour sélectionner',
+    'choices_unique' => 'Seules des valeurs uniques peuvent être ajoutées',
+    'choices_custom_add' => 'Seules les valeurs remplissant certaines conditions peuvent être ajoutées',
+    'choices_add' => 'Appuyez sur Entrée pour ajouter « :value »',
+    'choices_max' => 'Seules :count valeurs peuvent être ajoutées',
+    'choices_remove' => 'Retirer l’élément : :value',
+];

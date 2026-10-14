@@ -1,0 +1,52 @@
+<?php
+
+// VoxPilot POS translation of TastyIgniter's English strings (igniter.pages::default). Regenerate with
+// the i18n script rather than editing by hand when TastyIgniter adds strings.
+
+return array (
+  'column_language' => 'Langue',
+  'column_preview' => 'Aperçu',
+  'column_status' => 'Statut',
+  'help_layout' => 'La mise en page à utiliser pour afficher cette page',
+  'help_navigation' => 'Sélectionnez où afficher un lien vers cette page',
+  'help_permalink' => 'Utilisez UNIQUEMENT des caractères alphanumériques minuscules, des traits de soulignement ou des tirets et assurez-vous qu’il est unique dans le MONDE ENTIER.',
+  'label_content' => 'Contenu',
+  'label_heading' => 'Titre',
+  'label_language' => 'Langue',
+  'label_layout' => 'Mise en page',
+  'label_meta_description' => 'Méta-description',
+  'label_meta_keywords' => 'Mots-clés méta',
+  'label_navigation' => 'Masquer dans la navigation',
+  'label_permalink_id' => 'ID du permalien',
+  'label_permalink_slug' => 'Identifiant du permalien',
+  'label_status' => 'Statut',
+  'label_title' => 'Titre',
+  'menu' => 
+  array (
+    'button_menus' => '<i class="fa fa-sitemap"></i>&nbsp;Menus statiques',
+    'help_menu_code' => 'Spécifiez le code du menu que le composant doit afficher.',
+    'help_reference' => 'Sélectionnez la page à utiliser pour l’adresse URL.',
+    'label_attributes' => 'Attributs HTML supplémentaires',
+    'label_code' => 'Code',
+    'label_description' => 'Description',
+    'label_menu_code' => 'Code du menu',
+    'label_parent_id' => 'Élément de menu parent',
+    'label_reference' => 'Référence',
+    'label_theme' => 'Thème',
+    'label_title' => 'Titre',
+    'label_type' => 'Type',
+    'label_url' => 'URL',
+    'text_all_static_pages' => 'Toutes les pages statiques',
+    'text_menu_items' => 'Éléments de menu',
+    'text_static_page' => 'Page statique',
+  ),
+  'text_edit_title' => 'Page : mise à jour',
+  'text_empty' => 'Aucune page n’est disponible.',
+  'text_filter_search' => 'Rechercher par nom.',
+  'text_form_name' => 'Page',
+  'text_new_title' => 'Page : nouvelle',
+  'text_preview_title' => 'Page : aperçu',
+  'text_tab_edit' => 'Modifier',
+  'text_tab_manage' => 'Gérer',
+  'text_title' => 'Pages statiques',
+);

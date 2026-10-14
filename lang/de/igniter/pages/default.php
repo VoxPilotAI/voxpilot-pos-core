@@ -1,0 +1,52 @@
+<?php
+
+// VoxPilot POS translation of TastyIgniter's English strings (igniter.pages::default). Regenerate with
+// the i18n script rather than editing by hand when TastyIgniter adds strings.
+
+return array (
+  'column_language' => 'Sprache',
+  'column_preview' => 'Vorschau',
+  'column_status' => 'Status',
+  'help_layout' => 'Das Layout, das zum Rendern dieser Seite verwendet werden soll',
+  'help_navigation' => 'Wählen Sie aus, wo ein Link zu dieser Seite angezeigt werden soll',
+  'help_permalink' => 'Verwenden Sie NUR alphanumerische Kleinbuchstaben, Unterstriche oder Bindestriche und stellen Sie sicher, dass es GLOBAL eindeutig ist.',
+  'label_content' => 'Inhalt',
+  'label_heading' => 'Überschrift',
+  'label_language' => 'Sprache',
+  'label_layout' => 'Layout',
+  'label_meta_description' => 'Meta-Beschreibung',
+  'label_meta_keywords' => 'Meta-Schlüsselwörter',
+  'label_navigation' => 'In der Navigation ausblenden',
+  'label_permalink_id' => 'Permalink-ID',
+  'label_permalink_slug' => 'Permalink-Slug',
+  'label_status' => 'Status',
+  'label_title' => 'Titel',
+  'menu' => 
+  array (
+    'button_menus' => '<i class="fa fa-sitemap"></i>&nbsp;Statische Menüs',
+    'help_menu_code' => 'Geben Sie den Code des Menüs an, das die Komponente ausgeben soll.',
+    'help_reference' => 'Wählen Sie die Seite für die URL-Adresse aus.',
+    'label_attributes' => 'Zusätzliche HTML-Attribute',
+    'label_code' => 'Code',
+    'label_description' => 'Beschreibung',
+    'label_menu_code' => 'Menücode',
+    'label_parent_id' => 'Übergeordneter Menüpunkt',
+    'label_reference' => 'Referenz',
+    'label_theme' => 'Theme',
+    'label_title' => 'Titel',
+    'label_type' => 'Typ',
+    'label_url' => 'URL',
+    'text_all_static_pages' => 'Alle statischen Seiten',
+    'text_menu_items' => 'Menüpunkte',
+    'text_static_page' => 'Statische Seite',
+  ),
+  'text_edit_title' => 'Seite: Aktualisieren',
+  'text_empty' => 'Es sind keine Seiten verfügbar.',
+  'text_filter_search' => 'Nach Name suchen.',
+  'text_form_name' => 'Seite',
+  'text_new_title' => 'Seite: Neu',
+  'text_preview_title' => 'Seite: Vorschau',
+  'text_tab_edit' => 'Bearbeiten',
+  'text_tab_manage' => 'Verwalten',
+  'text_title' => 'Statische Seiten',
+);

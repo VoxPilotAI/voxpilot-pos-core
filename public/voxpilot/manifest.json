@@ -1,0 +1,16 @@
+{
+  "name": "VoxPilot POS",
+  "short_name": "VoxPilot POS",
+  "description": "Orders from your AI phone assistant, live.",
+  "id": "/admin/igniter/voxpilot/board",
+  "start_url": "/admin/igniter/voxpilot/board",
+  "scope": "/admin/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#05070d",
+  "theme_color": "#5b4cf0",
+  "icons": [
+    { "src": "/voxpilot/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/voxpilot/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

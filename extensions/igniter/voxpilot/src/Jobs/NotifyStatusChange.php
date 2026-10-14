@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Igniter\VoxPilot\Jobs;
 
+use Igniter\Cart\Models\Order;
 use Igniter\VoxPilot\Models\Tenant;
-use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
+use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
+use Igniter\VoxPilot\Services\VoxPilotWebhook;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class NotifyStatusChange implements ShouldQueue
@@ -38,11 +39,6 @@ class NotifyStatusChange implements ShouldQueue
             return;
         }
 
-        $callbackUrl = $this->resolveCallbackUrl($tenant);
-        if (!$callbackUrl) {
-            return;
-        }
-
         $payload = [
             'event' => 'order.status_changed',
             'external_order_id' => $this->externalOrderId,
@@ -51,30 +47,17 @@ class NotifyStatusChange implements ShouldQueue
             'comment' => $this->statusComment,
             'tenant_id' => $tenant->external_tenant_id,
             'timestamp' => now()->toIso8601String(),
+            // The kitchen's estimate, when the staff set one (pos-gateway SPEC-004).
+            'ready_at' => $this->readyAt(),
         ];
 
-        $body = json_encode($payload);
-        $timestamp = time();
-        $hmacSecret = config('voxpilot.hmac_shared_secret');
-
-        $headers = [
-            'Content-Type' => 'application/json',
-            'X-VoxPilot-Event' => 'order.status_changed',
-        ];
-
-        if ($hmacSecret) {
-            $signature = hash_hmac('sha256', "{$timestamp}.{$body}", $hmacSecret);
-            $headers['X-VoxPilot-Signature'] = "v1={$signature}";
-            $headers['X-VoxPilot-Timestamp'] = (string) $timestamp;
+        $response = (new VoxPilotWebhook())->send($tenant, '/pos/webhooks/order-status', 'order.status_changed', $payload);
+        if (!$response) {
+            return;
         }
 
-        $response = Http::withHeaders($headers)
-            ->timeout(10)
-            ->withBody($body, 'application/json')
-            ->post($callbackUrl);
-
         if ($response->failed()) {
-            Log::warning("[voxpilot] status webhook failed: HTTP {$response->status()} to {$callbackUrl}");
+            Log::warning("[voxpilot] status webhook failed: HTTP {$response->status()} for tenant {$this->tenantId}");
             $this->release($this->backoff[$this->attempts() - 1] ?? 300);
             return;
         }
@@ -82,22 +65,10 @@ class NotifyStatusChange implements ShouldQueue
         Log::info("[voxpilot] status webhook sent: order {$this->orderId} → {$this->statusName}");
     }
 
-    protected function resolveCallbackUrl(Tenant $tenant): ?string
+    protected function readyAt(): ?string
     {
-        $settings = $tenant->settings ?? [];
-        $url = $settings['webhook_callback_url'] ?? null;
+        $order = Order::withoutGlobalScopes()->find($this->orderId);
 
-        if (!$url) {
-            Log::info("[voxpilot] status webhook skipped: no callback URL for tenant {$this->tenantId}");
-            return null;
-        }
-
-        $parsed = parse_url(rtrim($url, '/') . '/pos/webhooks/order-status');
-        if (!$parsed || !in_array($parsed['scheme'] ?? '', ['http', 'https'], true)) {
-            Log::warning("[voxpilot] status webhook skipped: invalid URL scheme for tenant {$this->tenantId}");
-            return null;
-        }
-
-        return rtrim($url, '/') . '/pos/webhooks/order-status';
+        return $order ? VoxPilotStatusNotifier::readyAt($order)?->toIso8601String() : null;
     }
 }

@@ -2,6 +2,7 @@
 
 return [
     'landing' => [
+        'language' => 'Langue',
         'meta_title' => 'VoxPilot POS · Commandes en temps réel pour votre restaurant',
         'meta_description' => 'La caisse connectée à votre assistant téléphonique IA VoxPilot. Les commandes confirmées pendant l’appel arrivent instantanément, prêtes à préparer.',
         'badge' => 'Caisse par VoxPilot',

@@ -1,0 +1,33 @@
+<?php
+
+// Texts of the admin's JavaScript (VoxPilot and TastyIgniter scripts), sent to vp-admin.js.
+return [
+    'theme_toggle' => 'Zwischen hellem und dunklem Modus wechseln',
+    'this_month' => 'Dieser Monat',
+    'last_month' => 'Letzter Monat',
+    'lifetime' => 'Gesamter Zeitraum',
+    'custom_range' => 'Benutzerdefinierter Zeitraum',
+    'select_single' => 'Bitte wählen Sie ein einzelnes Element aus.',
+    'select_images' => 'Bitte wählen Sie die Bilder zum Einfügen aus.',
+    'cancel_translation' => 'Möchten Sie die Bearbeitung dieser Übersetzung wirklich abbrechen?',
+    'map_center' => 'Der Karte fehlen die Mittelpunktkoordinaten. Geben Sie eine Adresse ein und speichern Sie.',
+    'map_library' => 'Die Google-Maps-Bibliothek fehlt. Hinterlegen Sie den Maps-API-Schlüssel in den allgemeinen Systemeinstellungen.',
+    'previous' => 'Zurück',
+    'next' => 'Weiter',
+    'toggle_dropdown' => 'Optionen anzeigen',
+    'loading' => 'Wird geladen…',
+    'toggle_navigation' => 'Navigation ein-/ausblenden',
+    'remove' => 'Entfernen',
+    'sort' => 'Sortieren',
+    'filter' => 'Filtern',
+    'choose_color' => 'Farbe wählen',
+    'resize' => 'Größe ändern',
+    'choices_no_results' => 'Keine Ergebnisse gefunden',
+    'choices_no_choices' => 'Keine Auswahl verfügbar',
+    'choices_select' => 'Zum Auswählen drücken',
+    'choices_unique' => 'Nur eindeutige Werte können hinzugefügt werden',
+    'choices_custom_add' => 'Nur Werte, die bestimmte Bedingungen erfüllen, können hinzugefügt werden',
+    'choices_add' => 'Enter drücken, um ":value" hinzuzufügen',
+    'choices_max' => 'Nur :count Werte können hinzugefügt werden',
+    'choices_remove' => 'Element entfernen: :value',
+];

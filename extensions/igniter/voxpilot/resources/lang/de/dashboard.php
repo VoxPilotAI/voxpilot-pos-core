@@ -40,4 +40,12 @@ return [
     'total' => 'Summe',
     'best_sellers' => 'Bestseller',
     'sold' => ':count verkauft',
+    'widget_day_summary' => 'VoxPilot · Tagesabschluss',
+    'day_close' => 'Heute bisher',
+    'day_close_sub' => '{1} 1 Bestellung · :phone per KI-Telefon|[0,*] :count Bestellungen · :phone per KI-Telefon',
+    'by_payment' => 'Nach Zahlungsart',
+    'by_type' => 'Nach Art',
+    'unpaid' => 'Unbezahlt',
+    'canceled' => 'Storniert',
+    'no_orders_today' => 'Heute noch keine Bestellungen.',
 ];

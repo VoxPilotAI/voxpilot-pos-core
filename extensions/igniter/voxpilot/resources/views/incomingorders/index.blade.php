@@ -50,7 +50,7 @@
                         </div>
                         <ul class="vp-ticket-lines">
                             @foreach($meta->order->menus ?? [] as $menu)
-                                <li><span><strong>{{ $menu->quantity }}×</strong> {{ $menu->name }}</span><span>{{ currency_format($menu->subtotal) }}</span></li>
+                                <li><span><strong>{{ $menu->quantity }}×</strong> {{ \Igniter\VoxPilot\Support\OrderLine::name($menu) }}</span><span>{{ currency_format($menu->subtotal) }}</span></li>
                             @endforeach
                         </ul>
                         <div class="vp-ticket-foot">
@@ -164,14 +164,14 @@ document.addEventListener('DOMContentLoaded', function () {
             name.appendChild(el('strong', null, item.quantity + '× '));
             name.appendChild(document.createTextNode(item.name));
             li.appendChild(name);
-            li.appendChild(el('span', null, item.subtotal != null ? money.format(item.subtotal) : ''));
+            li.appendChild(el('span', null, item.subtotal_label || (item.subtotal != null ? money.format(item.subtotal) : '')));
             lines.appendChild(li);
         });
         card.appendChild(lines);
 
         var foot = el('div', 'vp-ticket-foot');
         foot.appendChild(el('span', 'vp-ticket-time', t.just_now));
-        foot.appendChild(el('strong', null, money.format(parseFloat(data.order_total) || 0)));
+        foot.appendChild(el('strong', null, data.order_total_label || money.format(parseFloat(data.order_total) || 0)));
         card.appendChild(foot);
         var actions = el('div', 'vp-ticket-actions');
         actions.id = 'vp-ticket-actions-' + orderId;
@@ -224,7 +224,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var failures = 0;
     locations.forEach(function (locationId) {
         echo.private('tenant.' + tenantId + '.location.' + locationId + '.orders')
-            .listen('.voxpilot.order.created', function (data) { chime(); addTicket(data); })
+            .listen('.voxpilot.order.created', function (data) {
+                chime(); addTicket(data);
+                // Only the order number: notifications show on lock screens.
+                if (window.vpNotify) window.vpNotify(@json(lang('igniter.voxpilot::board.new_order_notification', ['id' => ':id'])).replace(':id', data.order_id), '', window.location.href);
+            })
             .error(function () { failures++; if (failures >= locations.length) setStatus('danger', t.auth_failed); });
     });
     if (!locations.length) setStatus('muted', t.no_locations);

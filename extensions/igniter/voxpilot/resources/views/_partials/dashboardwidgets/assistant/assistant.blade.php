@@ -20,13 +20,13 @@
             </dl>
         </div>
         @if(!empty($stats['assistant']['name']))
-            <p class="vp-widget-sub">@lang('igniter.voxpilot::dashboard.assistant_name', ['name' => $stats['assistant']['name']])</p>
+            <p class="vp-widget-sub">{{ lang('igniter.voxpilot::dashboard.assistant_name', ['name' => $stats['assistant']['name']]) }}</p>
         @endif
         @if(!empty($stats['busiestHour']))
-            <div class="vp-insight">@lang('igniter.voxpilot::dashboard.busiest_hour', ['from' => sprintf('%02d:00', $stats['busiestHour']['hour']), 'to' => sprintf('%02d:00', ($stats['busiestHour']['hour'] + 1) % 24), 'orders' => $stats['busiestHour']['orders']])</div>
+            <div class="vp-insight">{{ lang('igniter.voxpilot::dashboard.busiest_hour', ['from' => sprintf('%02d:00', $stats['busiestHour']['hour']), 'to' => sprintf('%02d:00', ($stats['busiestHour']['hour'] + 1) % 24), 'orders' => $stats['busiestHour']['orders']]) }}</div>
         @endif
     @else
-        <p class="vp-widget-sub">@lang('igniter.voxpilot::dashboard.assistant_unavailable', ['orders' => $phoneOrders])</p>
+        <p class="vp-widget-sub">{{ lang('igniter.voxpilot::dashboard.assistant_unavailable', ['orders' => $phoneOrders]) }}</p>
         <a class="btn btn-outline-primary" href="{{ admin_url('igniter/voxpilot/integrations') }}">@lang('igniter.voxpilot::dashboard.open_voxpilot')</a>
     @endif
 </div>

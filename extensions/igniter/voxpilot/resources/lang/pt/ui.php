@@ -1,0 +1,33 @@
+<?php
+
+// Texts of the admin's JavaScript (VoxPilot and TastyIgniter scripts), sent to vp-admin.js.
+return [
+    'theme_toggle' => 'Alternar entre modo claro e escuro',
+    'this_month' => 'Este mês',
+    'last_month' => 'Mês passado',
+    'lifetime' => 'Desde sempre',
+    'custom_range' => 'Intervalo personalizado',
+    'select_single' => 'Selecione um único item.',
+    'select_images' => 'Selecione as imagens a inserir.',
+    'cancel_translation' => 'Tem a certeza de que quer cancelar a edição desta tradução?',
+    'map_center' => 'Faltam as coordenadas do centro do mapa: introduza uma morada e guarde.',
+    'map_library' => 'Falta a biblioteca do Google Maps: indique a chave da API do Maps nas definições gerais do sistema.',
+    'previous' => 'Anterior',
+    'next' => 'Seguinte',
+    'toggle_dropdown' => 'Mostrar opções',
+    'loading' => 'A carregar…',
+    'toggle_navigation' => 'Mostrar ou ocultar navegação',
+    'remove' => 'Remover',
+    'sort' => 'Ordenar',
+    'filter' => 'Filtrar',
+    'choose_color' => 'Escolha a cor',
+    'resize' => 'Redimensionar',
+    'choices_no_results' => 'Nenhum resultado encontrado',
+    'choices_no_choices' => 'Não há opções para escolher',
+    'choices_select' => 'Prima para selecionar',
+    'choices_unique' => 'Só é possível adicionar valores únicos',
+    'choices_custom_add' => 'Só é possível adicionar valores que cumpram certas condições',
+    'choices_add' => 'Prima Enter para adicionar ":value"',
+    'choices_max' => 'Só é possível adicionar :count valores',
+    'choices_remove' => 'Remover item: :value',
+];

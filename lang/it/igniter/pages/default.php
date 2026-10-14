@@ -1,0 +1,52 @@
+<?php
+
+// VoxPilot POS translation of TastyIgniter's English strings (igniter.pages::default). Regenerate with
+// the i18n script rather than editing by hand when TastyIgniter adds strings.
+
+return array (
+  'column_language' => 'Lingua',
+  'column_preview' => 'Anteprima',
+  'column_status' => 'Stato',
+  'help_layout' => 'Il layout da usare per visualizzare questa pagina',
+  'help_navigation' => 'Seleziona dove mostrare un link a questa pagina',
+  'help_permalink' => 'Usa SOLO caratteri alfanumerici minuscoli, underscore o trattini e assicurati che sia univoco GLOBALMENTE.',
+  'label_content' => 'Contenuto',
+  'label_heading' => 'Intestazione',
+  'label_language' => 'Lingua',
+  'label_layout' => 'Layout',
+  'label_meta_description' => 'Meta descrizione',
+  'label_meta_keywords' => 'Meta parole chiave',
+  'label_navigation' => 'Nascondi nella navigazione',
+  'label_permalink_id' => 'ID permalink',
+  'label_permalink_slug' => 'Slug permalink',
+  'label_status' => 'Stato',
+  'label_title' => 'Titolo',
+  'menu' => 
+  array (
+    'button_menus' => '<i class="fa fa-sitemap"></i>&nbsp;Menu statici',
+    'help_menu_code' => 'Specifica un codice del menu che il componente deve restituire.',
+    'help_reference' => 'Seleziona la pagina da usare per l\'indirizzo URL.',
+    'label_attributes' => 'Attributi HTML extra',
+    'label_code' => 'Codice',
+    'label_description' => 'Descrizione',
+    'label_menu_code' => 'Codice menu',
+    'label_parent_id' => 'Voce del menu padre',
+    'label_reference' => 'Riferimento',
+    'label_theme' => 'Tema',
+    'label_title' => 'Titolo',
+    'label_type' => 'Tipo',
+    'label_url' => 'URL',
+    'text_all_static_pages' => 'Tutte le pagine statiche',
+    'text_menu_items' => 'Voci del menu',
+    'text_static_page' => 'Pagina statica',
+  ),
+  'text_edit_title' => 'Pagina: Aggiorna',
+  'text_empty' => 'Non ci sono pagine disponibili.',
+  'text_filter_search' => 'Cerca per nome.',
+  'text_form_name' => 'Pagina',
+  'text_new_title' => 'Pagina: Nuova',
+  'text_preview_title' => 'Pagina: Anteprima',
+  'text_tab_edit' => 'Modifica',
+  'text_tab_manage' => 'Gestisci',
+  'text_title' => 'Pagine statiche',
+);

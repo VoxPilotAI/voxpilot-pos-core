@@ -16,6 +16,9 @@ class TenantContext
 
     protected ?string $role = null;
 
+    /** An admin with no restaurant (and not a super user): every tenant-scoped query is empty. */
+    protected bool $denyAll = false;
+
     public function set(Tenant $tenant, ?int $locationId = null): void
     {
         $this->tenant = $tenant;
@@ -65,9 +68,20 @@ class TenantContext
         return $this->tenant !== null;
     }
 
+    public function denyAll(): void
+    {
+        $this->denyAll = true;
+    }
+
+    public function deniesAll(): bool
+    {
+        return $this->denyAll && !$this->tenant;
+    }
+
     public function clear(): void
     {
         $this->tenant = null;
         $this->locationId = null;
+        $this->denyAll = false;
     }
 }

@@ -18,11 +18,28 @@ use Illuminate\Support\Str;
 class TenantProvisioningService
 {
     /**
-     * What a provisioned restaurant owner may do: connect VoxPilot and work its own orders (orders
-     * and locations are tenant-scoped). Menus, customers and the dashboard are global in this POS,
-     * so they are deliberately not granted.
+     * What a provisioned restaurant owner may do: connect VoxPilot and run their own restaurant —
+     * orders, menu (dishes, categories, mealtimes, ingredients, stock), locations, staff, customers,
+     * coupons, reviews and the dashboard. Every one of these is scoped to the restaurant; the
+     * platform-wide settings stay with super users (PlatformPermissions).
      */
-    private const OWNER_PERMISSIONS = ['Igniter.VoxPilot.Manage', 'Admin.Orders'];
+    public const OWNER_PERMISSIONS = [
+        'Igniter.VoxPilot.Manage',
+        'Admin.Dashboard',
+        'Admin.Orders',
+        'Admin.AssignOrders',
+        'Admin.Menus',
+        'Admin.Categories',
+        'Admin.Mealtimes',
+        'Admin.Ingredients',
+        'Admin.Allergens',
+        'Admin.Inventory',
+        'Admin.Locations',
+        'Admin.Staffs',
+        'Admin.Customers',
+        'Admin.Coupons',
+        'Admin.Reviews',
+    ];
 
     public function provision(array $payload): array
     {
@@ -178,10 +195,10 @@ class TenantProvisioningService
     }
 
     /**
-     * Restaurant owners need Igniter.VoxPilot.Manage (Tools → VoxPilot, Connect) and Admin.Orders
-     * (their orders). TastyIgniter stores role permissions as a map: permission => 1.
+     * The shared owner role holds OWNER_PERMISSIONS. TastyIgniter stores role permissions as a map:
+     * permission => 1.
      */
-    protected function ensureOwnerRoleWithVoxPilotPermission(): ?UserRole
+    public function ensureOwnerRoleWithVoxPilotPermission(): ?UserRole
     {
         $ownerRole = UserRole::query()->where('code', 'owner')->first()
             ?? UserRole::query()->find(1);

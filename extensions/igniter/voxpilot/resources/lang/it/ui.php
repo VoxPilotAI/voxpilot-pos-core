@@ -1,0 +1,33 @@
+<?php
+
+// Texts of the admin's JavaScript (VoxPilot and TastyIgniter scripts), sent to vp-admin.js.
+return [
+    'theme_toggle' => 'Passa tra modalità chiara e scura',
+    'this_month' => 'Questo mese',
+    'last_month' => 'Mese scorso',
+    'lifetime' => 'Dall’inizio',
+    'custom_range' => 'Intervallo personalizzato',
+    'select_single' => 'Seleziona un solo elemento.',
+    'select_images' => 'Seleziona le immagini da inserire.',
+    'cancel_translation' => 'Vuoi davvero annullare la modifica di questa traduzione?',
+    'map_center' => 'Alla mappa mancano le coordinate del centro: inserisci un indirizzo e salva.',
+    'map_library' => 'Manca la libreria di Google Maps: inserisci la chiave API di Maps nelle impostazioni generali di sistema.',
+    'previous' => 'Precedente',
+    'next' => 'Successivo',
+    'toggle_dropdown' => 'Mostra opzioni',
+    'loading' => 'Caricamento…',
+    'toggle_navigation' => 'Mostra o nascondi navigazione',
+    'remove' => 'Rimuovi',
+    'sort' => 'Ordina',
+    'filter' => 'Filtra',
+    'choose_color' => 'Scegli il colore',
+    'resize' => 'Ridimensiona',
+    'choices_no_results' => 'Nessun risultato trovato',
+    'choices_no_choices' => 'Nessuna opzione disponibile',
+    'choices_select' => 'Premi per selezionare',
+    'choices_unique' => 'Si possono aggiungere solo valori unici',
+    'choices_custom_add' => 'Si possono aggiungere solo valori che rispettano determinate condizioni',
+    'choices_add' => 'Premi Invio per aggiungere ":value"',
+    'choices_max' => 'Si possono aggiungere solo :count valori',
+    'choices_remove' => 'Rimuovi elemento: :value',
+];

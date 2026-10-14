@@ -2,6 +2,7 @@
 
 return [
     'landing' => [
+        'language' => 'Taal',
         'meta_title' => 'VoxPilot POS · Realtime bestellingen voor je restaurant',
         'meta_description' => 'Het kassasysteem dat is gekoppeld aan je VoxPilot AI-telefoonassistent. Bestellingen die in het gesprek zijn bevestigd komen direct binnen, klaar om te bereiden.',
         'badge' => 'Kassasysteem van VoxPilot',

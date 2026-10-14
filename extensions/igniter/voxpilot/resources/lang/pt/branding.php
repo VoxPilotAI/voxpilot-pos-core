@@ -2,6 +2,7 @@
 
 return [
     'landing' => [
+        'language' => 'Idioma',
         'meta_title' => 'VoxPilot POS · Pedidos em tempo real para o seu restaurante',
         'meta_description' => 'O ponto de venda ligado ao seu assistente telefónico com IA da VoxPilot. Os pedidos confirmados na chamada chegam na hora, prontos a preparar.',
         'badge' => 'Ponto de venda da VoxPilot',

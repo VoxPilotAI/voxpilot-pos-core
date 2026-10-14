@@ -1,0 +1,52 @@
+<?php
+
+// VoxPilot POS translation of TastyIgniter's English strings (igniter.pages::default). Regenerate with
+// the i18n script rather than editing by hand when TastyIgniter adds strings.
+
+return array (
+  'column_language' => 'Idioma',
+  'column_preview' => 'Pré-visualização',
+  'column_status' => 'Estado',
+  'help_layout' => 'O layout a usar para renderizar esta página',
+  'help_navigation' => 'Selecione onde mostrar um link para esta página',
+  'help_permalink' => 'Use APENAS caracteres alfanuméricos minúsculos, underscores ou hífenes e certifique-se de que é único GLOBALMENTE.',
+  'label_content' => 'Conteúdo',
+  'label_heading' => 'Cabeçalho',
+  'label_language' => 'Idioma',
+  'label_layout' => 'Layout',
+  'label_meta_description' => 'Meta descrição',
+  'label_meta_keywords' => 'Meta palavras-chave',
+  'label_navigation' => 'Ocultar na navegação',
+  'label_permalink_id' => 'ID do permalink',
+  'label_permalink_slug' => 'Slug do permalink',
+  'label_status' => 'Estado',
+  'label_title' => 'Título',
+  'menu' => 
+  array (
+    'button_menus' => '<i class="fa fa-sitemap"></i>&nbsp;Menus Estáticos',
+    'help_menu_code' => 'Especifique um código do menu que o componente deve gerar.',
+    'help_reference' => 'Selecione a página a usar para o endereço URL.',
+    'label_attributes' => 'Atributos HTML extra',
+    'label_code' => 'Código',
+    'label_description' => 'Descrição',
+    'label_menu_code' => 'Código do menu',
+    'label_parent_id' => 'Item de menu pai',
+    'label_reference' => 'Referência',
+    'label_theme' => 'Tema',
+    'label_title' => 'Título',
+    'label_type' => 'Tipo',
+    'label_url' => 'URL',
+    'text_all_static_pages' => 'Todas as Páginas Estáticas',
+    'text_menu_items' => 'Itens do menu',
+    'text_static_page' => 'Página Estática',
+  ),
+  'text_edit_title' => 'Página: Atualizar',
+  'text_empty' => 'Não há páginas disponíveis.',
+  'text_filter_search' => 'Procurar por nome.',
+  'text_form_name' => 'Página',
+  'text_new_title' => 'Página: Nova',
+  'text_preview_title' => 'Página: Pré-visualização',
+  'text_tab_edit' => 'Editar',
+  'text_tab_manage' => 'Gerir',
+  'text_title' => 'Páginas Estáticas',
+);

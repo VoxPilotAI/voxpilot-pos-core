@@ -23,6 +23,12 @@ final class Locale
         'nl' => 'Nederlands',
     ];
 
+    /** Supported languages with their native names, for language pickers. */
+    public static function options(): array
+    {
+        return array_intersect_key(self::NATIVE_NAMES, array_flip(self::supported()));
+    }
+
     public static function supported(): array
     {
         return (array) config('voxpilot.locales', ['en']);

@@ -8,6 +8,7 @@ use Igniter\Cart\Models\Order;
 use Igniter\Cart\Models\OrderMenu;
 use Igniter\Cart\Models\OrderMenuOptionValue;
 use Igniter\Cart\Models\OrderTotal;
+use Igniter\Local\Classes\CoveredAreaCondition;
 use Igniter\Local\Models\Location;
 use Igniter\Local\Models\LocationArea;
 use Igniter\VoxPilot\Models\Tenant;
@@ -34,20 +35,48 @@ class OrderIngestionService
 
         $deliveryFee = $this->computeDeliveryFee($payload, $locationId, $matchResult['matched']);
 
-        $result = DB::transaction(function () use ($payload, $tenant, $locationId, $idempotencyKey, $matchResult, $deliveryFee) {
-            $order = $this->createOrder($payload, $tenant, $locationId, $matchResult['unmapped']);
-            $this->createOrderMenus($order, $matchResult['matched'], $matchResult['unmapped']);
-            $this->createOrderTotals($order, $deliveryFee);
-            $metadata = $this->createMetadata($order, $tenant, $locationId, $payload, $idempotencyKey);
+        // The order stays as the caller confirmed it, but the kitchen sees which items it cannot make
+        // now (the assistant's menu may have been a few minutes old).
+        $unavailable = $this->unavailableMatches($matchResult['matched'], $locationId);
+        $storeIssue = $this->storeIssue($payload, $locationId);
 
-            return [
-                'order' => $order->fresh(['menus', 'location']),
-                'metadata' => $metadata,
-                'created' => true,
-                'unmapped' => $matchResult['unmapped'],
-                'price_mismatch' => $this->hasPriceMismatch($matchResult['matched']),
-            ];
-        });
+        try {
+            $result = DB::transaction(function () use ($payload, $tenant, $locationId, $idempotencyKey, $matchResult, $deliveryFee, $unavailable, $storeIssue) {
+                $order = $this->createOrder($payload, $tenant, $locationId, $matchResult['unmapped']);
+                $warnings = [];
+                if ($storeIssue) {
+                    $warnings[] = lang('igniter.voxpilot::orders.store_warning_'.$storeIssue);
+                }
+                if ($unavailable) {
+                    $warnings[] = lang('igniter.voxpilot::orders.unavailable_warning', [
+                        'items' => implode(', ', array_map(fn ($u) => $u['quantity'].'× '.$u['name'], $unavailable)),
+                    ]);
+                }
+                if ($warnings) {
+                    $order->comment = trim(implode("\n", array_filter([$order->comment, ...$warnings])));
+                    $order->save();
+                }
+                $this->createOrderMenus($order, $matchResult['matched'], $matchResult['unmapped']);
+                $this->createOrderTotals($order, $deliveryFee);
+                $metadata = $this->createMetadata($order, $tenant, $locationId, $payload, $idempotencyKey);
+
+                return [
+                    'order' => $order->fresh(['menus.menu_options', 'location']),
+                    'metadata' => $metadata,
+                    'created' => true,
+                    'unmapped' => $matchResult['unmapped'],
+                    'price_mismatch' => $this->hasPriceMismatch($matchResult['matched']),
+                ];
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            // The same order arrived twice at once and the other delivery created it: the same answer
+            // as any replay (the transaction above was rolled back).
+            $existing = $this->findExistingOrder($tenant->id, $idempotencyKey);
+            if ($existing) {
+                return ['order' => $existing['order'], 'metadata' => $existing['metadata'], 'created' => false];
+            }
+            throw new \RuntimeException('Order could not be stored');
+        }
 
         try {
             VoxPilotOrderCreated::dispatch(
@@ -61,6 +90,96 @@ class OrderIngestionService
         }
 
         return $result;
+    }
+
+    /**
+     * The order total as the POS would charge it, without creating anything (pos-gateway SPEC-002):
+     * menu prices with the size option, the location's delivery fee, and the items the POS does not
+     * know or cannot sell now (so the assistant never confirms a price the POS would not charge).
+     */
+    public function quote(array $payload, Tenant $tenant, TenantApiToken $token): array
+    {
+        $locationId = $this->resolveLocationId($payload, $tenant, $token);
+        $matchResult = (new MenuMatcher($locationId))->matchItems($payload['items'] ?? []);
+        $deliveryFee = $this->computeDeliveryFee($payload, $locationId, $matchResult['matched']);
+
+        $unavailable = $this->unavailableMatches($matchResult['matched'], $locationId);
+        $unavailableNames = array_column($unavailable, 'name');
+        $lines = [];
+        $subtotal = 0.0;
+        foreach ($matchResult['matched'] as $match) {
+            if (in_array((string) $match['menu']->menu_name, $unavailableNames, true)) {
+                continue;
+            }
+            $lines[] = [
+                'name' => (string) $match['name'],
+                'size' => $match['option']['matched'] ? $match['option']['name'] : null,
+                'size_matched' => (bool) $match['option']['matched'] || empty($match['item']['size']),
+                'quantity' => (int) $match['quantity'],
+                'unit_price' => round((float) $match['unit_price'], 2),
+                'line_total' => round((float) $match['line_total'], 2),
+                'price_mismatch' => (bool) $match['price_mismatch'],
+            ];
+            $subtotal += (float) $match['line_total'];
+        }
+
+        return [
+            'location_id' => $locationId,
+            'lines' => $lines,
+            'unmapped' => array_map(fn ($i) => ['name' => (string) ($i['name'] ?? '?'), 'quantity' => (int) ($i['quantity'] ?? 1)], $matchResult['unmapped']),
+            'unavailable' => $unavailable,
+            'store_issue' => $this->storeIssue($payload, $locationId),
+            'subtotal' => round($subtotal, 2),
+            'delivery_fee' => round((float) $deliveryFee, 2),
+            'total' => round($subtotal + (float) $deliveryFee, 2),
+            'currency' => (string) rescue(fn () => app('currency')->getUserCurrency(), '', false),
+        ];
+    }
+
+    /**
+     * Why the location cannot take this order right now, if it cannot: `store_closed` (paused or
+     * outside opening hours), `delivery_unavailable` or `pickup_unavailable` (that order type is off).
+     */
+    protected function storeIssue(array $payload, int $locationId): ?string
+    {
+        $location = Location::query()->withoutGlobalScopes()->find($locationId);
+        if (!$location) {
+            return null;
+        }
+        $store = (new StoreStatus())->forVoxPilot($location);
+        if (!$store['open']) {
+            return 'store_closed';
+        }
+        $delivery = ($payload['fulfillment']['type'] ?? 'pickup') === 'delivery';
+        if ($delivery && !$store['delivery_enabled']) {
+            return 'delivery_unavailable';
+        }
+        if (!$delivery && !$store['collection_enabled']) {
+            return 'pickup_unavailable';
+        }
+
+        return null;
+    }
+
+    /**
+     * The matched items the location cannot sell now: marked not available today, out of tracked
+     * stock, outside their mealtime or with a disabled ingredient (pos-gateway SPEC-001).
+     *
+     * @return array<int, array{name: string, quantity: int}>
+     */
+    protected function unavailableMatches(array $matched, int $locationId): array
+    {
+        $location = Location::query()->withoutGlobalScopes()->find($locationId);
+        $markedToday = $location ? (new MenuAvailability())->unavailableToday($location) : [];
+        $unavailable = [];
+        foreach ($matched as $match) {
+            $menu = $match['menu'];
+            if (in_array((int) $menu->menu_id, $markedToday, true) || $menu->outOfStock($locationId) || !$menu->isAvailable()) {
+                $unavailable[] = ['name' => (string) $menu->menu_name, 'quantity' => (int) $match['quantity']];
+            }
+        }
+
+        return $unavailable;
     }
 
     protected function findExistingOrder(int $tenantId, string $externalOrderId): ?array
@@ -248,7 +367,7 @@ class OrderIngestionService
         $sub = new OrderTotal();
         $sub->order_id = $order->order_id;
         $sub->code = 'subtotal';
-        $sub->title = 'Sub Total';
+        $sub->title = lang('igniter.cart::default.text_sub_total');
         $sub->value = $subtotal;
         $sub->priority = 0;
         $sub->is_summable = false;
@@ -258,7 +377,7 @@ class OrderIngestionService
             $fee = new OrderTotal();
             $fee->order_id = $order->order_id;
             $fee->code = 'delivery';
-            $fee->title = 'Delivery';
+            $fee->title = lang('igniter.cart::default.orders.text_delivery');
             $fee->value = $deliveryFee;
             $fee->priority = 100;
             $fee->is_summable = true;
@@ -271,7 +390,7 @@ class OrderIngestionService
         $totalRecord = new OrderTotal();
         $totalRecord->order_id = $order->order_id;
         $totalRecord->code = 'total';
-        $totalRecord->title = 'Order Total';
+        $totalRecord->title = lang('igniter.cart::default.text_order_total');
         $totalRecord->value = $order->order_total ?? 0;
         $totalRecord->priority = 999;
         $totalRecord->is_summable = false;
@@ -292,23 +411,16 @@ class OrderIngestionService
 
         $subtotal = array_sum(array_map(fn($m) => $m['line_total'] ?? 0, $matched));
 
-        foreach ($areas as $area) {
-            $conditions = is_array($area->conditions) ? $area->conditions : [];
-            foreach ($conditions as $condition) {
-                $total = (float) ($condition['total'] ?? $condition['amount'] ?? 0);
-                $charge = (float) ($condition['charge'] ?? $condition['delivery_charge'] ?? 0);
-                $type = $condition['type'] ?? 'above';
+        // The caller's address is not geocoded: the default delivery area (else the first one) applies.
+        // Conditions are TastyIgniter's own (`amount` = charge, `total` = threshold, type all/above/below);
+        // a charge of -1 means "no delivery" and is left to the staff, so it adds nothing here.
+        $area = $areas->firstWhere('is_default', true) ?? $areas->first();
+        $condition = collect(is_array($area->conditions) ? $area->conditions : [])
+            ->sortBy('priority')
+            ->mapInto(CoveredAreaCondition::class)
+            ->first(fn (CoveredAreaCondition $c): bool => $c->isValid($subtotal));
 
-                if ($type === 'above' && $subtotal > $total) {
-                    return $charge;
-                }
-                if ($type === 'below' && $subtotal <= $total) {
-                    return $charge;
-                }
-            }
-        }
-
-        return 0;
+        return (float) ($condition?->getCharge() ?? 0);
     }
 
     protected function hasPriceMismatch(array $matched): bool

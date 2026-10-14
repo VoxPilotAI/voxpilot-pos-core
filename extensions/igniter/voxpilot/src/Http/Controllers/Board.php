@@ -9,18 +9,23 @@ use Igniter\Admin\Facades\Template;
 use Igniter\Admin\Models\Status;
 use Igniter\Cart\Models\Order;
 use Igniter\VoxPilot\Http\Controllers\Concerns\OrderQuickActions;
+use Igniter\VoxPilot\Http\Controllers\Concerns\StoreControls;
 use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
+use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
+use Igniter\VoxPilot\Support\OrderLine;
 use Illuminate\Support\Collection;
 
 /**
  * Orders board: one column per order status, the active orders of the owner's restaurant (orders
  * go through the tenant-scoped Order model), and a button on each card that moves the order to the
  * next status. Status changes go through TastyIgniter's status history, so VoxPilot is notified
- * the same way as from the order page.
+ * the same way as from the order page. Above the columns, the store bar (StoreControls); with
+ * ?kds=1 the board fills the screen for the kitchen.
  */
 class Board extends AdminController
 {
     use OrderQuickActions;
+    use StoreControls;
 
     protected null|string|array $requiredPermissions = ['Admin.Orders'];
 
@@ -34,6 +39,11 @@ class Board extends AdminController
     {
         Template::setTitle($this->pageTitle = lang('igniter.voxpilot::board.title'));
         $this->vars['columns'] = $this->columns();
+        $this->vars['kds'] = (bool) request()->query('kds');
+        if ($this->vars['kds']) {
+            $this->bodyClass = 'vp-kds';
+        }
+        $this->vars = array_merge($this->vars, $this->storeBarVars());
     }
 
     public function onMoveOrder(): array
@@ -71,7 +81,7 @@ class Board extends AdminController
             ->where('status_for', 'order')
             ->orderBy('status_id')
             ->get()
-            ->reject(fn ($s) => $canceled ? (int) $s->status_id === $canceled : strcasecmp((string) $s->status_name, 'Canceled') === 0)
+            ->reject(fn ($s) => $canceled ? (int) $s->status_id === $canceled : strcasecmp((string) ($s->getAttributes()['status_name'] ?? ''), 'Canceled') === 0)
             ->values();
     }
 
@@ -82,7 +92,7 @@ class Board extends AdminController
             return $completed;
         }
 
-        return $statuses->filter(fn ($s) => strcasecmp((string) $s->status_name, 'Completed') === 0)
+        return $statuses->filter(fn ($s) => strcasecmp((string) ($s->getAttributes()['status_name'] ?? ''), 'Completed') === 0)
             ->pluck('status_id')->map(fn ($id) => (int) $id)->all();
     }
 
@@ -92,13 +102,13 @@ class Board extends AdminController
         $completed = $this->completedIds($statuses);
 
         $active = Order::query()
-            ->with('menus')
+            ->with('menus.menu_options')
             ->whereIn('status_id', $statuses->pluck('status_id')->diff($completed)->all())
             ->where('created_at', '>=', now()->subDays(self::ACTIVE_DAYS))
             ->orderBy('created_at')
             ->get();
         $done = Order::query()
-            ->with('menus')
+            ->with('menus.menu_options')
             ->whereIn('status_id', $completed ?: [0])
             ->whereDate('created_at', now()->toDateString())
             ->orderByDesc('created_at')
@@ -108,6 +118,7 @@ class Board extends AdminController
 
         $phoneIds = array_flip(VoxPilotOrderMetadata::whereIn('order_id', $orders->pluck('order_id'))->pluck('order_id')->all());
 
+        $received = (int) setting('default_order_status', 1);
         $columns = [];
         foreach ($statuses as $index => $status) {
             $next = $statuses[$index + 1] ?? null;
@@ -118,8 +129,9 @@ class Board extends AdminController
                 'type' => $order->order_type === 'delivery' ? lang('igniter.voxpilot::live.delivery') : lang('igniter.voxpilot::live.pickup'),
                 'total' => (float) $order->order_total,
                 'minutes' => (int) $order->created_at?->diffInMinutes(now()),
-                'lines' => $order->menus->map(fn ($m) => ['name' => (string) $m->name, 'quantity' => (int) $m->quantity])->all(),
+                'lines' => $order->menus->map(fn ($m) => ['name' => OrderLine::name($m), 'quantity' => (int) $m->quantity])->all(),
                 'comment' => (string) ($order->comment ?? ''),
+                'ready' => VoxPilotStatusNotifier::readyAt($order)?->format('H:i'),
             ])->values()->all();
 
             $columns[] = [
@@ -127,6 +139,7 @@ class Board extends AdminController
                 'name' => self::statusLabel($status->status_name),
                 'color' => (string) ($status->status_color ?: '#8a96b4'),
                 'done' => in_array((int) $status->status_id, $completed, true),
+                'accept' => (int) $status->status_id === $received,
                 'next' => $next && !in_array((int) $status->status_id, $completed, true)
                     ? ['id' => (int) $next->status_id, 'name' => self::statusLabel($next->status_name)]
                     : null,

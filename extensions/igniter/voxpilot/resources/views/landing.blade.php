@@ -404,7 +404,7 @@
     <footer class="footer">
         <div class="container">
             <span>&copy; {{ date('Y') }} VoxPilot. {{ $t('footer_rights') }} · <a href="{{ $marketingUrl }}" target="_blank" rel="noopener">voxpilothq.io</a></span>
-            <nav class="langs" aria-label="Language">
+            <nav class="langs" aria-label="{{ lang('igniter.voxpilot::branding.landing.language') }}">
                 @foreach(config('voxpilot.locales', ['en']) as $code)
                     <a href="{{ url('/') }}?lang={{ $code }}" hreflang="{{ $code }}" lang="{{ $code }}" @if($code === $locale) aria-current="true" @endif>{{ $code }}</a>
                 @endforeach

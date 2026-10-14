@@ -71,10 +71,12 @@ class ProvisioningEndpointTest extends TestCase
         $this->assertTrue(Location::where('tenant_id', $tenant->id)->where('location_id', $response->json('data.location_id'))->exists());
         $this->assertTrue(TenantMembership::where('tenant_id', $tenant->id)->where('user_id', $owner->user_id)->where('role', 'owner')->exists());
         $this->assertSame(0, TenantApiToken::where('tenant_id', $tenant->id)->count(), 'provisioning must not mint an order token');
-        // The owner can connect VoxPilot and see its orders (both tenant-scoped), nothing global.
+        // The owner runs their own restaurant (all of it restaurant-scoped), nothing platform-wide.
         $this->assertTrue($owner->fresh()->hasPermission('Igniter.VoxPilot.Manage'));
         $this->assertTrue($owner->fresh()->hasPermission('Admin.Orders'));
-        $this->assertFalse($owner->fresh()->hasPermission('Admin.Menus'));
+        $this->assertTrue($owner->fresh()->hasPermission('Admin.Menus'));
+        $this->assertFalse($owner->fresh()->hasPermission('Admin.Statuses'));
+        $this->assertFalse($owner->fresh()->hasPermission('Site.Settings'));
         // ...and is assigned to the restaurant's location (TastyIgniter lists orders per location).
         $this->assertTrue($owner->fresh()->locations()->where('locations.location_id', $response->json('data.location_id'))->exists());
         // The invite is TastyIgniter's set-your-password link: a reset code and the invite time.

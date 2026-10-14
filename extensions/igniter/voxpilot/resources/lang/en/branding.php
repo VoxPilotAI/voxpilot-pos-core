@@ -3,6 +3,7 @@
 // VoxPilot POS copy: the storefront landing page and the owner emails. Keep every language in sync.
 return [
     'landing' => [
+        'language' => 'Language',
         'meta_title' => 'VoxPilot POS · Real-time orders for your restaurant',
         'meta_description' => 'The point of sale connected to your VoxPilot AI phone assistant. Orders confirmed on the call arrive instantly, ready to prepare.',
         'badge' => 'Point of sale by VoxPilot',

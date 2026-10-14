@@ -2,6 +2,7 @@
 
 return [
     'landing' => [
+        'language' => 'Sprache',
         'meta_title' => 'VoxPilot POS · Bestellungen in Echtzeit für Ihr Restaurant',
         'meta_description' => 'Das Kassensystem, verbunden mit Ihrem VoxPilot KI-Telefonassistenten. Im Anruf bestätigte Bestellungen kommen sofort an, bereit zur Zubereitung.',
         'badge' => 'Kassensystem von VoxPilot',
