@@ -13,6 +13,8 @@ use Igniter\VoxPilot\Models\VoxPilotOrderMetadata;
 use Igniter\VoxPilot\Services\VoxPilotStatusNotifier;
 use Igniter\VoxPilot\Support\StatusLabel;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Mime\Exception\RfcComplianceException;
 
 /**
  * Quick actions on an order from the board and the live screen: a modal with the order's details,
@@ -38,7 +40,14 @@ trait OrderQuickActions
 
         $allowed = $this->quickStatuses()->pluck('status_id')->map(fn ($id) => (int) $id)->all();
         if ($target && in_array($target, $allowed, true) && (int) $order->status_id !== $target) {
-            $order->updateOrderStatus($target, ['staff_id' => $this->getUser()?->getKey()]);
+            // Phone orders usually have no customer email; TastyIgniter's status-update mail would
+            // build an Address('') and throw (RFC 2822), 500-ing the staff action. The caller is
+            // told about status changes through VoxPilot, so only ask for the email when there is a
+            // valid one to send it to.
+            $order->updateOrderStatus($target, [
+                'staff_id' => $this->getUser()?->getKey(),
+                'notify' => $this->customerCanBeEmailed($order),
+            ]);
             $order->refresh();
         }
 
@@ -56,12 +65,30 @@ trait OrderQuickActions
         $order = $this->findQuickOrder();
         $method = (string) request()->input('method');
         if (in_array($method, self::PAYMENT_METHODS, true) && !$order->processed && !$order->isCanceled()) {
-            $order->markAsPaymentProcessed();
+            // markAsPaymentProcessed() sets `processed` and saves before it fires the event that
+            // emails the customer their receipt. A phone order with no customer email makes that
+            // mail throw (Address('')), which would 500 the action even though the payment is
+            // already saved. Swallow only that addressing failure so marking paid never fails.
+            try {
+                $order->markAsPaymentProcessed();
+            } catch (RfcComplianceException $ex) {
+                Log::warning('[voxpilot] payment receipt skipped: order has no valid customer email', [
+                    'order_id' => $order->order_id,
+                ]);
+            }
             $this->logStaffPayment($order, $method);
             $order->refresh();
         }
 
         return ['#vp-order-modal-content' => $this->renderOrderModal($order)];
+    }
+
+    /** A non-empty, RFC-valid customer email — the only case TastyIgniter can address a mail to. */
+    protected function customerCanBeEmailed(Order $order): bool
+    {
+        $email = trim((string) $order->email);
+
+        return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
     /**
