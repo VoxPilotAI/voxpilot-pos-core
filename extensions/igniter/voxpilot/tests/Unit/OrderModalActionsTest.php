@@ -102,6 +102,35 @@ class OrderModalActionsTest extends TestCase
         $this->assertFalse((bool) $order->fresh()->processed);
     }
 
+    public function test_marking_paid_does_not_fail_when_a_phone_order_has_no_customer_email(): void
+    {
+        // The store emails customers their receipt, and a phone order has no email: building the
+        // receipt's recipient (Address('')) would throw and 500 the action. Marking paid must win.
+        setting()->set('order_email', ['customer']);
+        $order = $this->order(); // ManualOrderService orders carry a phone, never an email
+        $this->assertSame('', (string) $order->email);
+
+        request()->merge(['order_id' => $order->order_id, 'method' => 'cash']);
+        $this->quickActions()->onMarkOrderPaid();
+
+        $this->assertTrue((bool) $order->fresh()->processed);
+        $this->assertSame(1, $order->payment_logs()->count());
+    }
+
+    public function test_changing_status_does_not_fail_when_a_phone_order_has_no_customer_email(): void
+    {
+        setting()->set('order_email', ['customer']);
+        $order = $this->order();
+        $before = (int) $order->status_id;
+        $actions = $this->quickActions();
+
+        request()->merge(['order_id' => $order->order_id, 'status_id' => 'next']);
+        $actions->onSetOrderStatus();
+
+        // Status advanced and nothing threw building a customer email it could not address.
+        $this->assertNotSame($before, (int) $order->fresh()->status_id);
+    }
+
     public function test_assigns_only_the_restaurants_own_staff(): void
     {
         $order = $this->order(['type' => 'delivery', 'address' => 'Calle 5, San José']);
